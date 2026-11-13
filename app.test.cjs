@@ -19,3 +19,9 @@ test('genera TSPL e impide insertar comandos',()=>{
   assert.match(context.commandFor({name:'María Pérez',company:'Galtech'}),/SIZE 60 mm, 40 mm/);
   assert.throws(()=>context.commandFor({name:'Ana"\r\nPRINT 99',company:'Galtech'}));
 });
+test('combina los filtros de persona y empresa sin distinguir acentos',()=>{
+  const person={name:'María Pérez',company:'Tecnología Sur'};
+  assert.equal(context.matchesFilters(person,'maria','tecnologia'),true);
+  assert.equal(context.matchesFilters(person,'maria','otro'),false);
+  assert.equal(context.matchesFilters(person,'juan','tecnologia'),false);
+});
