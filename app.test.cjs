@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
 const fakeElement = {addEventListener(){}};
-const context = vm.createContext({document:{getElementById(){return fakeElement}}, TextDecoder});
+const context = vm.createContext({document:{getElementById(){return fakeElement},addEventListener(){}}, TextDecoder});
 vm.runInContext(fs.readFileSync('app.js','utf8'),context);
 test('lee columnas en distinto orden, comillas y acentos',()=>{
   const result=context.loadCSV('Empresa;Apellido;Nombre\n"A; B";Pérez;María\nAcme;;Juan');

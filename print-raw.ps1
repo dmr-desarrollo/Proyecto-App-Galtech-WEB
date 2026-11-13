@@ -1,3 +1,4 @@
+param([Parameter(Mandatory=$true)][string]$PrinterName)
 $ErrorActionPreference = 'Stop'
 Add-Type -TypeDefinition @'
 using System;
@@ -22,4 +23,4 @@ public static class RawPrinter {
 '@
 $payload = [Console]::In.ReadToEnd()
 $bytes = [Convert]::FromBase64String($payload)
-[RawPrinter]::Send('TSC TE210 (Copiar 1)', $bytes)
+[RawPrinter]::Send($PrinterName, $bytes)

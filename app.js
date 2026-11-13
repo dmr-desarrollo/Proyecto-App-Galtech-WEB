@@ -1,6 +1,6 @@
 /* El archivo CSV se procesa localmente. La plantilla TSPL necesita calibración. */
 const $ = id => document.getElementById(id);
-let rows = [], selected = new Set(), previewIndex = 0, printing = false;
+let rows = [], selected = new Set(), previewIndex = 0, printing = false, printerName = '';
 
 function parseCSV(text) {
   text = text.replace(/^\uFEFF/, '');
@@ -45,7 +45,7 @@ function refresh() {
   $('preview-name').textContent=chosen[previewIndex]?.name || 'Nombre Apellido'; $('preview-company').textContent=chosen[previewIndex]?.company || 'Empresa';
   $('preview-position').textContent=chosen.length ? `Etiqueta ${previewIndex+1} de ${chosen.length} · 60 × 40 mm` : 'Seleccioná una persona · 60 × 40 mm';
   $('previous').disabled=previewIndex===0; $('next').disabled=previewIndex>=chosen.length-1;
-  try { chosen.forEach(commandFor); $('print').disabled=!chosen.length || printing; $('print-status').textContent=''; }
+  try { chosen.forEach(commandFor); $('print').disabled=!chosen.length || printing || !printerName; $('print-status').textContent=''; }
   catch(e) { $('print-status').textContent=e.message; $('print').disabled=true; }
 }
 $('file').addEventListener('change', async e => { const file=e.target.files[0]; if (!file) return; try { const bytes=await file.arrayBuffer(); let text; try { text=new TextDecoder('utf-8',{fatal:true}).decode(bytes); } catch { text=new TextDecoder('windows-1252').decode(bytes); } const result=loadCSV(text); rows=result.valid; selected=new Set(); $('search').value=''; $('search').disabled=!rows.length; $('all').disabled=!rows.length; $('status').textContent=`${rows.length} personas cargadas.`+(result.invalid.length ? ` Filas incompletas omitidas: ${result.invalid.join(', ')}.` : ''); refresh(); } catch(err) { $('status').textContent=err.message+' No se reemplazó la lista anterior.'; } e.target.value=''; });
@@ -54,12 +54,34 @@ $('all').addEventListener('click',()=>{const q=normalize($('search').value);rows
 $('clear').addEventListener('click',()=>{selected.clear();refresh()});
 $('previous').addEventListener('click',()=>{previewIndex--;refresh()});
 $('next').addEventListener('click',()=>{previewIndex++;refresh()});
+async function findPrinters() {
+  const select=$('printer'); const previous=printerName; printerName=''; $('print').disabled=true; $('refresh-printers').disabled=true;
+  $('printer-status').textContent='Buscando impresoras…'; select.hidden=true; $('printer-label').hidden=true;
+  try {
+    if(location.protocol==='file:') throw Error('Abrí la aplicación desde http://127.0.0.1:4173 para conectar la impresora.');
+    const response=await fetch('/api/printers',{cache:'no-store'}); const data=await response.json(); if(!response.ok) throw Error(data.error || 'No se pudo buscar la impresora.');
+    const printers=data.printers; select.replaceChildren();
+    if(!printers.length) { $('printer-status').textContent='No encontramos una impresora TSC USB instalada. Revisá la conexión y el controlador.'; }
+    else if(printers.length===1) { printerName=printers[0].name; $('printer-status').textContent=`Impresora detectada: ${printerName}. Comprobá que esté encendida y tenga etiquetas.`; }
+    else {
+      const placeholder=document.createElement('option'); placeholder.value=''; placeholder.textContent='Elegí una impresora'; select.append(placeholder);
+      printers.forEach(p=>{const option=document.createElement('option');option.value=p.name;option.textContent=p.name;select.append(option)});
+      if(printers.some(p=>p.name===previous)) printerName=previous;
+      select.value=printerName; select.hidden=false; $('printer-label').hidden=false;
+      $('printer-status').textContent=printerName ? 'Impresora seleccionada. Comprobá que esté encendida y tenga etiquetas.' : 'Encontramos varias impresoras TSC USB. Elegí una.';
+    }
+  } catch(e) { $('printer-status').textContent=`No se pudo conectar con el servicio de impresión. ${e.message}`; }
+  finally { $('refresh-printers').disabled=false; refresh(); }
+}
+$('refresh-printers').addEventListener('click',findPrinters);
+$('printer').addEventListener('change',()=>{printerName=$('printer').value;$('printer-status').textContent=printerName?'Impresora seleccionada. Comprobá que esté encendida y tenga etiquetas.':'Elegí una impresora.';refresh()});
+document.addEventListener('DOMContentLoaded',findPrinters);
 $('print').addEventListener('click',async()=>{
   const chosen=[...selected].sort((a,b)=>a-b).map(i=>rows[i]);
-  if (!chosen.length || printing || !confirm(`Se enviarán ${chosen.length} etiquetas a la impresora. ¿Continuar?`)) return;
+  if (!chosen.length || !printerName || printing || !confirm(`Se enviarán ${chosen.length} etiquetas a ${printerName}. ¿Continuar?`)) return;
   if (location.protocol === 'file:') { $('print-status').textContent='Para imprimir, iniciá el servicio local y abrí http://127.0.0.1:4173.'; return; }
   printing=true; refresh(); $('print-status').textContent='Enviando a la impresora…';
-  try { const response=await fetch('/api/print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rows:chosen})}); const data=await response.json(); if(!response.ok) throw new Error(data.error || 'No se pudo enviar el trabajo.'); $('print-status').textContent=`Se enviaron ${chosen.length} etiquetas a la cola de Windows. Revisá la impresora.`; }
+  try { const response=await fetch('/api/print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rows:chosen,printer:printerName})}); const data=await response.json(); if(!response.ok) throw new Error(data.error || 'No se pudo enviar el trabajo.'); $('print-status').textContent=`Se enviaron ${chosen.length} etiquetas a la cola de Windows. Revisá la impresora.`; }
   catch(e) { $('print-status').textContent=`No se pudo confirmar el envío: ${e.message} Revisá la cola antes de reintentar.`; }
-  finally { printing=false; $('print').disabled=false; }
+  finally { printing=false; $('print').disabled=!selected.size || !printerName; }
 });
