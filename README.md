@@ -2,8 +2,8 @@
 
 Inicio de la aplicación web para etiquetas de asistentes de 60 × 40 mm.
 
-Abrí `index.html` en Chrome para usar la aplicación. Cargá `ejemplo.csv` para probarla. Se admiten encabezados Nombre, Apellido y Empresa en cualquier orden; el separador puede ser `;` o `,`. La aplicación procesa el archivo localmente.
+En Windows, abrí la terminal de VS Code en esta carpeta y ejecutá `node server.cjs`. Dejá la terminal abierta y visitá http://127.0.0.1:4173 en Chrome o Edge. Cargá `ejemplo.csv` para probarla. Se admiten encabezados Nombre, Apellido y Empresa en cualquier orden; el separador puede ser `;` o `,`. La aplicación procesa el archivo localmente.
 
-La descarga PRN usa una plantilla TSPL de prueba con CODEPAGE 1252. La vista previa es orientativa y no reproduce las fuentes ni posiciones exactas del TSPL. Es necesario calibrar la plantilla en la impresora real antes de utilizarla. La aplicación todavía no envía trabajos directamente a la impresora. El PRN y CSV de artículos compartidos son referencias, no el formato definitivo de asistentes.
+El botón de impresión envía la plantilla TSPL con CODEPAGE 1252 como trabajo RAW a la cola de Windows `TSC TE210 (Copiar 1)`. Si cambia el nombre de la impresora, hay que ajustarlo en `print-raw.ps1`. La vista previa es orientativa y no reproduce las fuentes ni posiciones exactas del TSPL. El envío a la cola no confirma la impresión física. Probá primero con una etiqueta y calibrá la plantilla. El servicio escucha solo en este equipo y debe permanecer abierto; abrir el HTML directamente no permite imprimir.
 
 Para ejecutar las pruebas: `node --test app.test.cjs`.

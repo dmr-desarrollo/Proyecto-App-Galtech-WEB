@@ -1,6 +1,6 @@
 /* El archivo CSV se procesa localmente. La plantilla TSPL necesita calibración. */
 const $ = id => document.getElementById(id);
-let rows = [], selected = new Set();
+let rows = [], selected = new Set(), previewIndex = 0, printing = false;
 
 function parseCSV(text) {
   text = text.replace(/^\uFEFF/, '');
@@ -41,12 +41,25 @@ function refresh() {
   if (!list.children.length) { const p=document.createElement('p'); p.textContent=rows.length ? 'No hay coincidencias.' : 'Cargá un CSV para ver las personas aquí.'; list.append(p); }
   $('count').textContent=`${selected.size} seleccionadas`; $('clear').disabled=!selected.size;
   const chosen=[...selected].sort((a,b)=>a-b).map(i=>rows[i]);
-  $('preview-name').textContent=chosen[0]?.name || 'Nombre Apellido'; $('preview-company').textContent=chosen[0]?.company || 'Empresa';
-  try { $('commands').textContent=chosen.length ? chosen.map(commandFor).join('') : 'Seleccioná una persona.'; $('download').disabled=!chosen.length; }
-  catch(e) { $('commands').textContent=e.message; $('download').disabled=true; }
+  previewIndex=Math.min(previewIndex,Math.max(0,chosen.length-1));
+  $('preview-name').textContent=chosen[previewIndex]?.name || 'Nombre Apellido'; $('preview-company').textContent=chosen[previewIndex]?.company || 'Empresa';
+  $('preview-position').textContent=chosen.length ? `Etiqueta ${previewIndex+1} de ${chosen.length} · 60 × 40 mm` : 'Seleccioná una persona · 60 × 40 mm';
+  $('previous').disabled=previewIndex===0; $('next').disabled=previewIndex>=chosen.length-1;
+  try { chosen.forEach(commandFor); $('print').disabled=!chosen.length || printing; $('print-status').textContent=''; }
+  catch(e) { $('print-status').textContent=e.message; $('print').disabled=true; }
 }
 $('file').addEventListener('change', async e => { const file=e.target.files[0]; if (!file) return; try { const bytes=await file.arrayBuffer(); let text; try { text=new TextDecoder('utf-8',{fatal:true}).decode(bytes); } catch { text=new TextDecoder('windows-1252').decode(bytes); } const result=loadCSV(text); rows=result.valid; selected=new Set(); $('search').value=''; $('search').disabled=!rows.length; $('all').disabled=!rows.length; $('status').textContent=`${rows.length} personas cargadas.`+(result.invalid.length ? ` Filas incompletas omitidas: ${result.invalid.join(', ')}.` : ''); refresh(); } catch(err) { $('status').textContent=err.message+' No se reemplazó la lista anterior.'; } e.target.value=''; });
 $('search').addEventListener('input',refresh);
 $('all').addEventListener('click',()=>{const q=normalize($('search').value);rows.forEach((r,i)=>{if(normalize(r.name+' '+r.company).includes(q))selected.add(i)});refresh()});
 $('clear').addEventListener('click',()=>{selected.clear();refresh()});
-$('download').addEventListener('click',()=>{const content=[...selected].sort((a,b)=>a-b).map(i=>commandFor(rows[i])).join(''); const bytes=Uint8Array.from(content, c=>c.charCodeAt(0)); const url=URL.createObjectURL(new Blob([bytes],{type:'application/octet-stream'})); const a=document.createElement('a'); a.href=url;a.download='etiquetas-prueba.prn';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+$('previous').addEventListener('click',()=>{previewIndex--;refresh()});
+$('next').addEventListener('click',()=>{previewIndex++;refresh()});
+$('print').addEventListener('click',async()=>{
+  const chosen=[...selected].sort((a,b)=>a-b).map(i=>rows[i]);
+  if (!chosen.length || printing || !confirm(`Se enviarán ${chosen.length} etiquetas a la impresora. ¿Continuar?`)) return;
+  if (location.protocol === 'file:') { $('print-status').textContent='Para imprimir, iniciá el servicio local y abrí http://127.0.0.1:4173.'; return; }
+  printing=true; refresh(); $('print-status').textContent='Enviando a la impresora…';
+  try { const response=await fetch('/api/print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rows:chosen})}); const data=await response.json(); if(!response.ok) throw new Error(data.error || 'No se pudo enviar el trabajo.'); $('print-status').textContent=`Se enviaron ${chosen.length} etiquetas a la cola de Windows. Revisá la impresora.`; }
+  catch(e) { $('print-status').textContent=`No se pudo confirmar el envío: ${e.message} Revisá la cola antes de reintentar.`; }
+  finally { printing=false; $('print').disabled=false; }
+});
