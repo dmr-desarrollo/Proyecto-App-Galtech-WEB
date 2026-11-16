@@ -38,3 +38,7 @@ test('el selector muestra la impresora instalada aunque solo haya una',async()=>
   assert.equal(elements.get('printer').value,'TSC TE210');
   assert.ok(elements.get('printer').children.some(p=>p.value==='TSC TE210'));
 });
+test('prepara una etiqueta por cada persona seleccionada en el orden de la lista',()=>{
+  const result=context.labelsForBrowser([{name:'Ana',company:'A'},{name:'Luis',company:'B'}],new Set([1,0]));
+  assert.deepEqual(JSON.parse(JSON.stringify(result)),[{name:'Ana',company:'A'},{name:'Luis',company:'B'}]);
+});
