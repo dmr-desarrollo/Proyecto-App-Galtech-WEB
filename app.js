@@ -1,6 +1,8 @@
 /* El archivo CSV se procesa localmente. La plantilla TSPL necesita calibración. */
 const $ = id => document.getElementById(id);
 let rows = [], selected = new Set(), previewIndex = 0, printing = false, printerName = '';
+const bridgeBase = 'http://127.0.0.1:4173';
+function bridgeFetch(path, options={}) { return fetch(bridgeBase+path,{...options,targetAddressSpace:'loopback'}); }
 
 function parseCSV(text) {
   text = text.replace(/^\uFEFF/, '');
@@ -62,7 +64,7 @@ async function findPrinters() {
   $('printer-status').textContent='Buscando impresoras…'; select.hidden=true; $('printer-label').hidden=true;
   try {
     if(location.protocol==='file:') throw Error('Abrí la aplicación desde http://127.0.0.1:4173 para conectar la impresora.');
-    const response=await fetch('/api/printers',{cache:'no-store'}); const data=await response.json(); if(!response.ok) throw Error(data.error || 'No se pudo buscar la impresora.');
+    const response=await bridgeFetch('/api/printers',{cache:'no-store'}); const data=await response.json(); if(!response.ok) throw Error(data.error || 'No se pudo buscar la impresora.');
     const printers=data.printers; select.replaceChildren();
     if(!printers.length) { $('printer-status').textContent='No encontramos una impresora TSC USB o de red instalada. Revisá la conexión y el controlador.'; }
     else if(printers.length===1) { printerName=printers[0].name; $('printer-status').textContent=`Impresora detectada: ${printerName} (${printers[0].connection}${printers[0].address ? ' · '+printers[0].address : ''}). Comprobá que esté encendida y tenga etiquetas.`; }
@@ -73,19 +75,19 @@ async function findPrinters() {
       select.value=printerName; select.hidden=false; $('printer-label').hidden=false;
       $('printer-status').textContent=printerName ? 'Impresora seleccionada. Comprobá que esté encendida y tenga etiquetas.' : 'Encontramos varias impresoras TSC instaladas. Elegí una.';
     }
-  } catch(e) { $('printer-status').textContent=`No se pudo conectar con el servicio de impresión. ${e.message}`; }
+  } catch(e) { $('printer-status').textContent='No se pudo conectar con el servicio local. Inicialo en esta computadora y permití el acceso a la red local si el navegador lo solicita.'; }
   finally { $('refresh-printers').disabled=false; refresh(); }
 }
 $('refresh-printers').addEventListener('click',findPrinters);
-$('scan-network').addEventListener('click',async()=>{const button=$('scan-network'),list=$('scan-results');button.disabled=true;list.replaceChildren();$('scan-status').textContent='Buscando dispositivos en la red local…';try{const response=await fetch('/api/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const data=await response.json();if(!response.ok)throw Error(data.error||'No se pudo buscar.');$('scan-status').textContent=data.addresses.length?'Dispositivos con puerto 9100 abierto; verificá que sean impresoras TSC antes de instalarlos en Windows.':'No se encontraron dispositivos con el puerto 9100 abierto en las redes examinadas.';data.addresses.forEach(ip=>{const li=document.createElement('li');li.textContent=ip;list.append(li)});}catch(e){$('scan-status').textContent=`No se pudo buscar: ${e.message}`;}finally{button.disabled=false;}});
+$('scan-network').addEventListener('click',async()=>{const button=$('scan-network'),list=$('scan-results');button.disabled=true;list.replaceChildren();$('scan-status').textContent='Buscando dispositivos en la red local…';try{const response=await bridgeFetch('/api/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const data=await response.json();if(!response.ok)throw Error(data.error||'No se pudo buscar.');$('scan-status').textContent=data.addresses.length?'Dispositivos con puerto 9100 abierto; verificá que sean impresoras TSC antes de instalarlos en Windows.':'No se encontraron dispositivos con el puerto 9100 abierto en las redes examinadas.';data.addresses.forEach(ip=>{const li=document.createElement('li');li.textContent=ip;list.append(li)});}catch(e){$('scan-status').textContent=`No se pudo buscar: ${e.message}`;}finally{button.disabled=false;}});
 $('printer').addEventListener('change',()=>{printerName=$('printer').value;$('printer-status').textContent=printerName?'Impresora seleccionada. Comprobá que esté encendida y tenga etiquetas.':'Elegí una impresora.';refresh()});
-document.addEventListener('DOMContentLoaded',findPrinters);
+document.addEventListener('DOMContentLoaded',()=>{if(location.origin==='http://127.0.0.1:4173')findPrinters();else $('printer-status').textContent='Para conectar la impresora, iniciá el servicio local y pulsá Buscar impresora instalada.';});
 $('print').addEventListener('click',async()=>{
   const chosen=[...selected].sort((a,b)=>a-b).map(i=>rows[i]);
   if (!chosen.length || !printerName || printing || !confirm(`Se enviarán ${chosen.length} etiquetas a ${printerName}. ¿Continuar?`)) return;
   if (location.protocol === 'file:') { $('print-status').textContent='Para imprimir, iniciá el servicio local y abrí http://127.0.0.1:4173.'; return; }
   printing=true; refresh(); $('print-status').textContent='Enviando a la impresora…';
-  try { const response=await fetch('/api/print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rows:chosen,printer:printerName})}); const data=await response.json(); if(!response.ok) throw new Error(data.error || 'No se pudo enviar el trabajo.'); $('print-status').textContent=`Se enviaron ${chosen.length} etiquetas a la cola de Windows. Revisá la impresora.`; }
+  try { const response=await bridgeFetch('/api/print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rows:chosen,printer:printerName})}); const data=await response.json(); if(!response.ok) throw new Error(data.error || 'No se pudo enviar el trabajo.'); $('print-status').textContent=`Se enviaron ${chosen.length} etiquetas a la cola de Windows. Revisá la impresora.`; }
   catch(e) { $('print-status').textContent=`No se pudo confirmar el envío: ${e.message} Revisá la cola antes de reintentar.`; }
   finally { printing=false; $('print').disabled=!selected.size || !printerName; }
 });

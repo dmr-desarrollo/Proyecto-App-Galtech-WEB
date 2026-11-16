@@ -18,13 +18,22 @@ function listPrinters() {
   });
 }
 const server=http.createServer(async(req,res)=>{
-  const origin='http://127.0.0.1:4173';
+  const localOrigin='http://127.0.0.1:4173', hostedOrigin='https://galtech-etiquetas.netlify.app';
+  const origin=req.headers.origin, authorizedOrigin=origin===localOrigin||origin===hostedOrigin;
   res.setHeader('X-Content-Type-Options','nosniff');
   if(req.headers.host!=='127.0.0.1:4173'){res.writeHead(403);return res.end('Forbidden');}
+  if(req.url.startsWith('/api/')) {
+    if(origin && !authorizedOrigin){res.writeHead(403);return res.end('Forbidden');}
+    if(origin===hostedOrigin){res.setHeader('Access-Control-Allow-Origin',hostedOrigin);res.setHeader('Vary','Origin');}
+    if(req.method==='OPTIONS'){
+      if(!authorizedOrigin){res.writeHead(403);return res.end('Forbidden');}
+      res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type','Access-Control-Max-Age':'600'});return res.end();
+    }
+  }
   if(req.method==='GET' && files[req.url]) {const [file,type]=files[req.url];res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-store'});return fs.createReadStream(path.join(root,file)).pipe(res);}
   if(req.method==='GET' && req.url==='/api/printers') { try {const printers=await listPrinters(); res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});return res.end(JSON.stringify({printers}));} catch(e) {res.writeHead(500,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'No se pudieron buscar impresoras en Windows.'}));} }
-  if(req.method==='POST' && req.url==='/api/scan' && req.headers.origin===origin && req.headers['content-type']==='application/json') { if(scanning){res.writeHead(409,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Ya hay una búsqueda en curso.'}));} scanning=true; try{const result=await scan();res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});return res.end(JSON.stringify(result));}catch(e){res.writeHead(500,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'No se pudo buscar en la red local.'}));}finally{scanning=false;} }
-  if(req.method!=='POST'||req.url!=='/api/print'||req.headers.origin!==origin||req.headers['content-type']!=='application/json') {res.writeHead(403);return res.end('Forbidden');}
+  if(req.method==='POST' && req.url==='/api/scan' && authorizedOrigin && req.headers['content-type']==='application/json') { if(scanning){res.writeHead(409,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Ya hay una búsqueda en curso.'}));} scanning=true; try{const result=await scan();res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});return res.end(JSON.stringify(result));}catch(e){res.writeHead(500,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'No se pudo buscar en la red local.'}));}finally{scanning=false;} }
+  if(req.method!=='POST'||req.url!=='/api/print'||!authorizedOrigin||req.headers['content-type']!=='application/json') {res.writeHead(403);return res.end('Forbidden');}
   const reply=(status,obj)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(obj));};
   if(busy) return reply(409,{error:'Hay un trabajo en curso.'});
   busy=true;
