@@ -4,11 +4,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const vm = require('node:vm');
+const { scan } = require('./network-scan.cjs');
 const root = __dirname;
 const context = vm.createContext({document:{getElementById:()=>({addEventListener(){}}),addEventListener(){}}});
 vm.runInContext(fs.readFileSync(path.join(root,'app.js'),'utf8'), context);
 const files = {'/':['index.html','text/html; charset=utf-8'], '/index.html':['index.html','text/html; charset=utf-8'], '/styles.css':['styles.css','text/css; charset=utf-8'], '/app.js':['app.js','text/javascript; charset=utf-8'], '/ejemplo.csv':['ejemplo.csv','text/csv; charset=utf-8']};
-let busy=false;
+let busy=false, scanning=false;
 function listPrinters() {
   return new Promise((resolve,reject)=>{
     const child=spawn('powershell.exe',['-NoProfile','-NonInteractive','-File',path.join(root,'list-printers.ps1')],{windowsHide:true}); let output='',error='';
@@ -22,6 +23,7 @@ const server=http.createServer(async(req,res)=>{
   if(req.headers.host!=='127.0.0.1:4173'){res.writeHead(403);return res.end('Forbidden');}
   if(req.method==='GET' && files[req.url]) {const [file,type]=files[req.url];res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-store'});return fs.createReadStream(path.join(root,file)).pipe(res);}
   if(req.method==='GET' && req.url==='/api/printers') { try {const printers=await listPrinters(); res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});return res.end(JSON.stringify({printers}));} catch(e) {res.writeHead(500,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'No se pudieron buscar impresoras en Windows.'}));} }
+  if(req.method==='POST' && req.url==='/api/scan' && req.headers.origin===origin && req.headers['content-type']==='application/json') { if(scanning){res.writeHead(409,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Ya hay una búsqueda en curso.'}));} scanning=true; try{const result=await scan();res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});return res.end(JSON.stringify(result));}catch(e){res.writeHead(500,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'No se pudo buscar en la red local.'}));}finally{scanning=false;} }
   if(req.method!=='POST'||req.url!=='/api/print'||req.headers.origin!==origin||req.headers['content-type']!=='application/json') {res.writeHead(403);return res.end('Forbidden');}
   const reply=(status,obj)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(obj));};
   if(busy) return reply(409,{error:'Hay un trabajo en curso.'});

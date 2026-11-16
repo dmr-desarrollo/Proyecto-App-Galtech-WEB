@@ -64,19 +64,20 @@ async function findPrinters() {
     if(location.protocol==='file:') throw Error('Abrí la aplicación desde http://127.0.0.1:4173 para conectar la impresora.');
     const response=await fetch('/api/printers',{cache:'no-store'}); const data=await response.json(); if(!response.ok) throw Error(data.error || 'No se pudo buscar la impresora.');
     const printers=data.printers; select.replaceChildren();
-    if(!printers.length) { $('printer-status').textContent='No encontramos una impresora TSC USB instalada. Revisá la conexión y el controlador.'; }
-    else if(printers.length===1) { printerName=printers[0].name; $('printer-status').textContent=`Impresora detectada: ${printerName}. Comprobá que esté encendida y tenga etiquetas.`; }
+    if(!printers.length) { $('printer-status').textContent='No encontramos una impresora TSC USB o de red instalada. Revisá la conexión y el controlador.'; }
+    else if(printers.length===1) { printerName=printers[0].name; $('printer-status').textContent=`Impresora detectada: ${printerName} (${printers[0].connection}${printers[0].address ? ' · '+printers[0].address : ''}). Comprobá que esté encendida y tenga etiquetas.`; }
     else {
       const placeholder=document.createElement('option'); placeholder.value=''; placeholder.textContent='Elegí una impresora'; select.append(placeholder);
-      printers.forEach(p=>{const option=document.createElement('option');option.value=p.name;option.textContent=p.name;select.append(option)});
+      printers.forEach(p=>{const option=document.createElement('option');option.value=p.name;option.textContent=`${p.name} (${p.connection}${p.address ? ' · '+p.address : ''})`;select.append(option)});
       if(printers.some(p=>p.name===previous)) printerName=previous;
       select.value=printerName; select.hidden=false; $('printer-label').hidden=false;
-      $('printer-status').textContent=printerName ? 'Impresora seleccionada. Comprobá que esté encendida y tenga etiquetas.' : 'Encontramos varias impresoras TSC USB. Elegí una.';
+      $('printer-status').textContent=printerName ? 'Impresora seleccionada. Comprobá que esté encendida y tenga etiquetas.' : 'Encontramos varias impresoras TSC instaladas. Elegí una.';
     }
   } catch(e) { $('printer-status').textContent=`No se pudo conectar con el servicio de impresión. ${e.message}`; }
   finally { $('refresh-printers').disabled=false; refresh(); }
 }
 $('refresh-printers').addEventListener('click',findPrinters);
+$('scan-network').addEventListener('click',async()=>{const button=$('scan-network'),list=$('scan-results');button.disabled=true;list.replaceChildren();$('scan-status').textContent='Buscando dispositivos en la red local…';try{const response=await fetch('/api/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const data=await response.json();if(!response.ok)throw Error(data.error||'No se pudo buscar.');$('scan-status').textContent=data.addresses.length?'Dispositivos con puerto 9100 abierto; verificá que sean impresoras TSC antes de instalarlos en Windows.':'No se encontraron dispositivos con el puerto 9100 abierto en las redes examinadas.';data.addresses.forEach(ip=>{const li=document.createElement('li');li.textContent=ip;list.append(li)});}catch(e){$('scan-status').textContent=`No se pudo buscar: ${e.message}`;}finally{button.disabled=false;}});
 $('printer').addEventListener('change',()=>{printerName=$('printer').value;$('printer-status').textContent=printerName?'Impresora seleccionada. Comprobá que esté encendida y tenga etiquetas.':'Elegí una impresora.';refresh()});
 document.addEventListener('DOMContentLoaded',findPrinters);
 $('print').addEventListener('click',async()=>{
