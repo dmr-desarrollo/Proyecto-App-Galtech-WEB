@@ -27,3 +27,14 @@ test('combina los filtros de persona y empresa sin distinguir acentos',()=>{
   assert.equal(context.matchesFilters(person,'maria','otro'),false);
   assert.equal(context.matchesFilters(person,'juan','tecnologia'),false);
 });
+test('el selector muestra la impresora instalada aunque solo haya una',async()=>{
+  const elements=new Map();
+  const element=()=>({hidden:false,disabled:false,value:'',textContent:'',children:[],addEventListener(){},replaceChildren(){this.children=[]},append(...items){this.children.push(...items)}});
+  const document={getElementById(id){if(!elements.has(id)) elements.set(id,element());return elements.get(id)},createElement(){return element()},addEventListener(){}};
+  const context=vm.createContext({document,location:{protocol:'https:',origin:'https://galtech-etiquetas.netlify.app'},fetch:async()=>({ok:true,json:async()=>({printers:[{name:'TSC TE210',connection:'Windows',address:''}]})})});
+  vm.runInContext(fs.readFileSync('app.js','utf8'),context);
+  await context.findPrinters();
+  assert.equal(elements.get('printer').hidden,false);
+  assert.equal(elements.get('printer').value,'TSC TE210');
+  assert.ok(elements.get('printer').children.some(p=>p.value==='TSC TE210'));
+});

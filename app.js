@@ -66,16 +66,16 @@ async function findPrinters() {
     if(location.protocol==='file:') throw Error('Abrí la aplicación desde http://127.0.0.1:4173 para conectar la impresora.');
     const response=await bridgeFetch('/api/printers',{cache:'no-store'}); const data=await response.json(); if(!response.ok) throw Error(data.error || 'No se pudo buscar la impresora.');
     const printers=data.printers; select.replaceChildren();
-    if(!printers.length) { $('printer-status').textContent='No encontramos una impresora TSC USB o de red instalada. Revisá la conexión y el controlador.'; }
-    else if(printers.length===1) { printerName=printers[0].name; $('printer-status').textContent=`Impresora detectada: ${printerName} (${printers[0].connection}${printers[0].address ? ' · '+printers[0].address : ''}). Comprobá que esté encendida y tenga etiquetas.`; }
+    if(!printers.length) { $('printer-status').textContent='Windows no informó impresoras instaladas. Revisá la conexión y el controlador.'; }
     else {
       const placeholder=document.createElement('option'); placeholder.value=''; placeholder.textContent='Elegí una impresora'; select.append(placeholder);
       printers.forEach(p=>{const option=document.createElement('option');option.value=p.name;option.textContent=`${p.name} (${p.connection}${p.address ? ' · '+p.address : ''})`;select.append(option)});
       if(printers.some(p=>p.name===previous)) printerName=previous;
+      else if(printers.length===1 && /tsc/i.test(printers[0].name)) printerName=printers[0].name;
       select.value=printerName; select.hidden=false; $('printer-label').hidden=false;
-      $('printer-status').textContent=printerName ? 'Impresora seleccionada. Comprobá que esté encendida y tenga etiquetas.' : 'Encontramos varias impresoras TSC instaladas. Elegí una.';
+      $('printer-status').textContent=printerName ? 'Impresora seleccionada. Comprobá que esté encendida y tenga etiquetas.' : 'Elegí una impresora de etiquetas compatible con TSPL.';
     }
-  } catch(e) { $('printer-status').textContent='No se pudo conectar con el servicio local. Inicialo en esta computadora y permití el acceso a la red local si el navegador lo solicita.'; }
+  } catch(e) { $('printer-status').textContent=`No se pudo obtener la lista de impresoras: ${e.message}. Revisá el puente local y los permisos del navegador.`; }
   finally { $('refresh-printers').disabled=false; refresh(); }
 }
 $('refresh-printers').addEventListener('click',findPrinters);
