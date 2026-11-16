@@ -27,3 +27,7 @@ test('combina los filtros de persona y empresa sin distinguir acentos',()=>{
   assert.equal(context.matchesFilters(person,'maria','otro'),false);
   assert.equal(context.matchesFilters(person,'juan','tecnologia'),false);
 });
+test('prepara una etiqueta por cada persona seleccionada en el orden de la lista',()=>{
+  const result=context.labelsForBrowser([{name:'Ana',company:'A'},{name:'Luis',company:'B'}],new Set([1,0]));
+  assert.deepEqual(JSON.parse(JSON.stringify(result)),[{name:'Ana',company:'A'},{name:'Luis',company:'B'}]);
+});

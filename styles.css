@@ -3,3 +3,11 @@
 .csv-actions{display:flex;justify-content:flex-end;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px}
 .csv-buttons{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .label strong,.label span{font-size:16pt;font-weight:bold;text-align:center}
+#print-labels{display:none}
+@media print{
+  @page{size:60mm 40mm;margin:0}
+  body>*:not(#print-labels){display:none!important}
+  #print-labels{display:block}
+  .print-label{width:60mm;height:40mm;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;text-align:center;padding:2mm;overflow:hidden;overflow-wrap:anywhere;color:#000;font: bold 16pt Arial,sans-serif;break-after:page;page-break-after:always}
+  .print-label:last-child{break-after:auto;page-break-after:auto}
+}
