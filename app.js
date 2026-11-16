@@ -38,12 +38,14 @@ function commandFor(r) {
   }
   return `SIZE 60 mm, 40 mm\r\nGAP 2 mm, 0 mm\r\nDIRECTION 1\r\nCODEPAGE 1252\r\nCLS\r\nTEXT 240,60,"0",0,16,16,2,"${r.name}"\r\nTEXT 240,180,"0",0,16,16,2,"${r.company}"\r\nPRINT 1\r\n`;
 }
+function labelsForBrowser(items, selection) { return [...selection].sort((a,b)=>a-b).map(i=>items[i]); }
 function refresh() {
   const person = $('search').value, companyQuery = $('company-search').value, list = $('list'); list.replaceChildren();
   rows.forEach((r,i) => { if (!matchesFilters(r,person,companyQuery)) return; const label = document.createElement('label'); label.className='person'; const box=document.createElement('input'); box.type='checkbox'; box.checked=selected.has(i); box.addEventListener('change',()=>{box.checked ? selected.add(i) : selected.delete(i); refresh();}); const text=document.createElement('span'), name=document.createElement('strong'), company=document.createElement('small'); name.textContent=r.name; company.textContent=r.company; text.append(name,document.createElement('br'),company); label.append(box,text); list.append(label); });
   if (!list.children.length) { const p=document.createElement('p'); p.textContent=rows.length ? 'No hay coincidencias.' : 'Cargá un CSV para ver las personas aquí.'; list.append(p); }
   $('count').textContent=`${selected.size} seleccionadas`; $('clear').disabled=!selected.size;
   const chosen=[...selected].sort((a,b)=>a-b).map(i=>rows[i]);
+  $('browser-print').disabled=!chosen.length;
   previewIndex=Math.min(previewIndex,Math.max(0,chosen.length-1));
   $('preview-name').textContent=chosen[previewIndex]?.name || 'Nombre Apellido'; $('preview-company').textContent=chosen[previewIndex]?.company || 'Empresa';
   $('preview-position').textContent=chosen.length ? `Etiqueta ${previewIndex+1} de ${chosen.length} · 60 × 40 mm` : 'Seleccioná una persona · 60 × 40 mm';
@@ -90,4 +92,18 @@ $('print').addEventListener('click',async()=>{
   try { const response=await bridgeFetch('/api/print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rows:chosen,printer:printerName})}); const data=await response.json(); if(!response.ok) throw new Error(data.error || 'No se pudo enviar el trabajo.'); $('print-status').textContent=`Se enviaron ${chosen.length} etiquetas a la cola de Windows. Revisá la impresora.`; }
   catch(e) { $('print-status').textContent=`No se pudo confirmar el envío: ${e.message} Revisá la cola antes de reintentar.`; }
   finally { printing=false; $('print').disabled=!selected.size || !printerName; }
+});
+
+$('browser-print').addEventListener('click',()=>{
+  const chosen=labelsForBrowser(rows,selected);
+  if (!chosen.length) return;
+  const container=$('print-labels');
+  container.replaceChildren();
+  chosen.forEach(row=>{
+    const label=document.createElement('div'); label.className='print-label';
+    const name=document.createElement('strong'); name.textContent=row.name;
+    const company=document.createElement('span'); company.textContent=row.company;
+    label.append(name,company); container.append(label);
+  });
+  window.print();
 });
