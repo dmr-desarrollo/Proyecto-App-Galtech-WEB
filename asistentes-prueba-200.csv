@@ -1,0 +1,201 @@
+nombre;apellido;empresa
+Ana;Pérez;Galtech
+Juan;Pérez;Tecnología Sur
+María;Pérez;Red del Sur
+Pedro;Pérez;Agro Sur
+Lucía;Pérez;Comercial Prado
+Martín;Pérez;Monte Verde
+Sofía;Pérez;Campo Verde
+Diego;Pérez;Servicios del Este
+Valentina;Pérez;Horizonte SA
+Andrés;Pérez;Río Plata
+Camila;Pérez;Faro Industrial
+Nicolás;Pérez;Delta Comercial
+Paula;Pérez;Norte Industrial
+Federico;Pérez;Rumbo Norte
+Carolina;Pérez;Pampa Digital
+Santiago;Pérez;Soluciones Delta
+Florencia;Pérez;Pradera SA
+Sebastián;Pérez;Puerto Sol
+Julieta;Pérez;Logística Oriental
+Gonzalo;Pérez;Cosecha Azul
+Daniela;Pérez;Galtech
+Matías;Pérez;Tecnología Sur
+Victoria;Pérez;Red del Sur
+Emiliano;Pérez;Agro Sur
+Laura;Pérez;Comercial Prado
+Ignacio;Pérez;Monte Verde
+Natalia;Pérez;Campo Verde
+Joaquín;Pérez;Servicios del Este
+Gabriela;Pérez;Horizonte SA
+Rodrigo;Pérez;Río Plata
+Agustina;Pérez;Faro Industrial
+Alejandro;Pérez;Delta Comercial
+Mariana;Pérez;Norte Industrial
+Pablo;Pérez;Rumbo Norte
+Belén;Pérez;Pampa Digital
+Ana;Rodríguez;Logística Oriental
+Juan;Rodríguez;Cosecha Azul
+María;Rodríguez;Galtech
+Pedro;Rodríguez;Tecnología Sur
+Lucía;Rodríguez;Red del Sur
+Martín;Rodríguez;Agro Sur
+Sofía;Rodríguez;Comercial Prado
+Diego;Rodríguez;Monte Verde
+Valentina;Rodríguez;Campo Verde
+Andrés;Rodríguez;Servicios del Este
+Camila;Rodríguez;Horizonte SA
+Nicolás;Rodríguez;Río Plata
+Paula;Rodríguez;Faro Industrial
+Federico;Rodríguez;Delta Comercial
+Carolina;Rodríguez;Norte Industrial
+Santiago;Rodríguez;Rumbo Norte
+Florencia;Rodríguez;Pampa Digital
+Sebastián;Rodríguez;Soluciones Delta
+Julieta;Rodríguez;Pradera SA
+Gonzalo;Rodríguez;Puerto Sol
+Daniela;Rodríguez;Logística Oriental
+Matías;Rodríguez;Cosecha Azul
+Victoria;Rodríguez;Galtech
+Emiliano;Rodríguez;Tecnología Sur
+Laura;Rodríguez;Red del Sur
+Ignacio;Rodríguez;Agro Sur
+Natalia;Rodríguez;Comercial Prado
+Joaquín;Rodríguez;Monte Verde
+Gabriela;Rodríguez;Campo Verde
+Rodrigo;Rodríguez;Servicios del Este
+Agustina;Rodríguez;Horizonte SA
+Alejandro;Rodríguez;Río Plata
+Mariana;Rodríguez;Faro Industrial
+Pablo;Rodríguez;Delta Comercial
+Belén;Rodríguez;Norte Industrial
+Ana;González;Pradera SA
+Juan;González;Puerto Sol
+María;González;Logística Oriental
+Pedro;González;Cosecha Azul
+Lucía;González;Galtech
+Martín;González;Tecnología Sur
+Sofía;González;Red del Sur
+Diego;González;Agro Sur
+Valentina;González;Comercial Prado
+Andrés;González;Monte Verde
+Camila;González;Campo Verde
+Nicolás;González;Servicios del Este
+Paula;González;Horizonte SA
+Federico;González;Río Plata
+Carolina;González;Faro Industrial
+Santiago;González;Delta Comercial
+Florencia;González;Norte Industrial
+Sebastián;González;Rumbo Norte
+Julieta;González;Pampa Digital
+Gonzalo;González;Soluciones Delta
+Daniela;González;Pradera SA
+Matías;González;Puerto Sol
+Victoria;González;Logística Oriental
+Emiliano;González;Cosecha Azul
+Laura;González;Galtech
+Ignacio;González;Tecnología Sur
+Natalia;González;Red del Sur
+Joaquín;González;Agro Sur
+Gabriela;González;Comercial Prado
+Rodrigo;González;Monte Verde
+Agustina;González;Campo Verde
+Alejandro;González;Servicios del Este
+Mariana;González;Horizonte SA
+Pablo;González;Río Plata
+Belén;González;Faro Industrial
+Ana;Fernández;Pampa Digital
+Juan;Fernández;Soluciones Delta
+María;Fernández;Pradera SA
+Pedro;Fernández;Puerto Sol
+Lucía;Fernández;Logística Oriental
+Martín;Fernández;Cosecha Azul
+Sofía;Fernández;Galtech
+Diego;Fernández;Tecnología Sur
+Valentina;Fernández;Red del Sur
+Andrés;Fernández;Agro Sur
+Camila;Fernández;Comercial Prado
+Nicolás;Fernández;Monte Verde
+Paula;Fernández;Campo Verde
+Federico;Fernández;Servicios del Este
+Carolina;Fernández;Horizonte SA
+Santiago;Fernández;Río Plata
+Florencia;Fernández;Faro Industrial
+Sebastián;Fernández;Delta Comercial
+Julieta;Fernández;Norte Industrial
+Gonzalo;Fernández;Rumbo Norte
+Daniela;Fernández;Pampa Digital
+Matías;Fernández;Soluciones Delta
+Victoria;Fernández;Pradera SA
+Emiliano;Fernández;Puerto Sol
+Laura;Fernández;Logística Oriental
+Ignacio;Fernández;Cosecha Azul
+Natalia;Fernández;Galtech
+Joaquín;Fernández;Tecnología Sur
+Gabriela;Fernández;Red del Sur
+Rodrigo;Fernández;Agro Sur
+Agustina;Fernández;Comercial Prado
+Alejandro;Fernández;Monte Verde
+Mariana;Fernández;Campo Verde
+Pablo;Fernández;Servicios del Este
+Belén;Fernández;Horizonte SA
+Ana;López;Norte Industrial
+Juan;López;Rumbo Norte
+María;López;Pampa Digital
+Pedro;López;Soluciones Delta
+Lucía;López;Pradera SA
+Martín;López;Puerto Sol
+Sofía;López;Logística Oriental
+Diego;López;Cosecha Azul
+Valentina;López;Galtech
+Andrés;López;Tecnología Sur
+Camila;López;Red del Sur
+Nicolás;López;Agro Sur
+Paula;López;Comercial Prado
+Federico;López;Monte Verde
+Carolina;López;Campo Verde
+Santiago;López;Servicios del Este
+Florencia;López;Horizonte SA
+Sebastián;López;Río Plata
+Julieta;López;Faro Industrial
+Gonzalo;López;Delta Comercial
+Daniela;López;Norte Industrial
+Matías;López;Rumbo Norte
+Victoria;López;Pampa Digital
+Emiliano;López;Soluciones Delta
+Laura;López;Pradera SA
+Ignacio;López;Puerto Sol
+Natalia;López;Logística Oriental
+Joaquín;López;Cosecha Azul
+Gabriela;López;Galtech
+Rodrigo;López;Tecnología Sur
+Agustina;López;Red del Sur
+Alejandro;López;Agro Sur
+Mariana;López;Comercial Prado
+Pablo;López;Monte Verde
+Belén;López;Campo Verde
+Ana;Martínez;Faro Industrial
+Juan;Martínez;Delta Comercial
+María;Martínez;Norte Industrial
+Pedro;Martínez;Rumbo Norte
+Lucía;Martínez;Pampa Digital
+Martín;Martínez;Soluciones Delta
+Sofía;Martínez;Pradera SA
+Diego;Martínez;Puerto Sol
+Valentina;Martínez;Logística Oriental
+Andrés;Martínez;Cosecha Azul
+Camila;Martínez;Galtech
+Nicolás;Martínez;Tecnología Sur
+Paula;Martínez;Red del Sur
+Federico;Martínez;Agro Sur
+Carolina;Martínez;Comercial Prado
+Santiago;Martínez;Monte Verde
+Florencia;Martínez;Campo Verde
+Sebastián;Martínez;Servicios del Este
+Julieta;Martínez;Horizonte SA
+Gonzalo;Martínez;Río Plata
+Daniela;Martínez;Faro Industrial
+Matías;Martínez;Delta Comercial
+Victoria;Martínez;Norte Industrial
+Emiliano;Martínez;Rumbo Norte
+Laura;Martínez;Pampa Digital

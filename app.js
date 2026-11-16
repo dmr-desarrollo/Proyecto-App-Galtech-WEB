@@ -1,6 +1,6 @@
 /* El archivo CSV se procesa localmente. La plantilla TSPL necesita calibración. */
 const $ = id => document.getElementById(id);
-let rows = [], selected = new Set();
+let rows = [], selected = new Set(), previewIndex = 0, printing = false, printerName = '';
 
 function parseCSV(text) {
   text = text.replace(/^\uFEFF/, '');
@@ -20,6 +20,7 @@ function parseCSV(text) {
   return result.filter(r => r.some(x => x.trim()));
 }
 function normalize(s) { return s.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
+function matchesFilters(row, person, company) { return normalize(row.name).includes(normalize(person)) && normalize(row.company).includes(normalize(company)); }
 function loadCSV(text) {
   const data = parseCSV(text); if (!data.length) throw new Error('El archivo está vacío.');
   const headings = data[0].map(normalize), indexes = ['nombre','apellido','empresa'].map(x => headings.indexOf(x));
@@ -33,20 +34,58 @@ function commandFor(r) {
     if (value.length > 35) throw new Error('Hay un texto de más de 35 caracteres; acortalo antes de generar la prueba.');
     if (/[^\x20-\x7e\xa0-\xff]/.test(value) || /["\\]/.test(value)) throw new Error('Hay caracteres que la plantilla de prueba no admite. Revisá comillas, símbolos o caracteres especiales.');
   }
-  return `SIZE 60 mm, 40 mm\r\nGAP 2 mm, 0 mm\r\nDIRECTION 1\r\nCODEPAGE 1252\r\nCLS\r\nTEXT 24,60,"3",0,1,1,"${r.name}"\r\nTEXT 24,180,"3",0,1,1,"${r.company}"\r\nPRINT 1\r\n`;
+  return `SIZE 60 mm, 40 mm\r\nGAP 2 mm, 0 mm\r\nDIRECTION 1\r\nCODEPAGE 1252\r\nCLS\r\nTEXT 240,60,"0",0,16,16,2,"${r.name}"\r\nTEXT 240,180,"0",0,16,16,2,"${r.company}"\r\nPRINT 1\r\n`;
 }
 function refresh() {
-  const query = normalize($('search').value), list = $('list'); list.replaceChildren();
-  rows.forEach((r,i) => { if (!normalize(r.name+' '+r.company).includes(query)) return; const label = document.createElement('label'); label.className='person'; const box=document.createElement('input'); box.type='checkbox'; box.checked=selected.has(i); box.addEventListener('change',()=>{box.checked ? selected.add(i) : selected.delete(i); refresh();}); const text=document.createElement('span'), name=document.createElement('strong'), company=document.createElement('small'); name.textContent=r.name; company.textContent=r.company; text.append(name,document.createElement('br'),company); label.append(box,text); list.append(label); });
+  const person = $('search').value, companyQuery = $('company-search').value, list = $('list'); list.replaceChildren();
+  rows.forEach((r,i) => { if (!matchesFilters(r,person,companyQuery)) return; const label = document.createElement('label'); label.className='person'; const box=document.createElement('input'); box.type='checkbox'; box.checked=selected.has(i); box.addEventListener('change',()=>{box.checked ? selected.add(i) : selected.delete(i); refresh();}); const text=document.createElement('span'), name=document.createElement('strong'), company=document.createElement('small'); name.textContent=r.name; company.textContent=r.company; text.append(name,document.createElement('br'),company); label.append(box,text); list.append(label); });
   if (!list.children.length) { const p=document.createElement('p'); p.textContent=rows.length ? 'No hay coincidencias.' : 'Cargá un CSV para ver las personas aquí.'; list.append(p); }
   $('count').textContent=`${selected.size} seleccionadas`; $('clear').disabled=!selected.size;
   const chosen=[...selected].sort((a,b)=>a-b).map(i=>rows[i]);
-  $('preview-name').textContent=chosen[0]?.name || 'Nombre Apellido'; $('preview-company').textContent=chosen[0]?.company || 'Empresa';
-  try { $('commands').textContent=chosen.length ? chosen.map(commandFor).join('') : 'Seleccioná una persona.'; $('download').disabled=!chosen.length; }
-  catch(e) { $('commands').textContent=e.message; $('download').disabled=true; }
+  previewIndex=Math.min(previewIndex,Math.max(0,chosen.length-1));
+  $('preview-name').textContent=chosen[previewIndex]?.name || 'Nombre Apellido'; $('preview-company').textContent=chosen[previewIndex]?.company || 'Empresa';
+  $('preview-position').textContent=chosen.length ? `Etiqueta ${previewIndex+1} de ${chosen.length} · 60 × 40 mm` : 'Seleccioná una persona · 60 × 40 mm';
+  $('previous').disabled=previewIndex===0; $('next').disabled=previewIndex>=chosen.length-1;
+  try { chosen.forEach(commandFor); $('print').disabled=!chosen.length || printing || !printerName; $('print-status').textContent=''; }
+  catch(e) { $('print-status').textContent=e.message; $('print').disabled=true; }
 }
-$('file').addEventListener('change', async e => { const file=e.target.files[0]; if (!file) return; try { const bytes=await file.arrayBuffer(); let text; try { text=new TextDecoder('utf-8',{fatal:true}).decode(bytes); } catch { text=new TextDecoder('windows-1252').decode(bytes); } const result=loadCSV(text); rows=result.valid; selected=new Set(); $('search').value=''; $('search').disabled=!rows.length; $('all').disabled=!rows.length; $('status').textContent=`${rows.length} personas cargadas.`+(result.invalid.length ? ` Filas incompletas omitidas: ${result.invalid.join(', ')}.` : ''); refresh(); } catch(err) { $('status').textContent=err.message+' No se reemplazó la lista anterior.'; } e.target.value=''; });
+$('file').addEventListener('change', async e => { const file=e.target.files[0]; if (!file) return; try { const bytes=await file.arrayBuffer(); let text; try { text=new TextDecoder('utf-8',{fatal:true}).decode(bytes); } catch { text=new TextDecoder('windows-1252').decode(bytes); } const result=loadCSV(text); rows=result.valid; selected=new Set(); previewIndex=0; $('search').value=''; $('company-search').value=''; $('search').disabled=!rows.length; $('company-search').disabled=!rows.length; $('all').disabled=!rows.length; $('remove-file').disabled=false; $('status').textContent=`${file.name}: ${rows.length} personas cargadas.`+(result.invalid.length ? ` Filas incompletas omitidas: ${result.invalid.join(', ')}.` : ''); refresh(); } catch(err) { $('status').textContent=err.message+' No se reemplazó la lista anterior.'; } e.target.value=''; });
+$('remove-file').addEventListener('click',()=>{if(!confirm('¿Quitar el CSV cargado y la selección actual?')) return; rows=[];selected=new Set();previewIndex=0;for(const id of ['search','company-search']){$(id).value='';$(id).disabled=true;} $('file').value='';$('all').disabled=true;$('remove-file').disabled=true;$('status').textContent='Todavía no cargaste ningún archivo.';refresh();});
 $('search').addEventListener('input',refresh);
-$('all').addEventListener('click',()=>{const q=normalize($('search').value);rows.forEach((r,i)=>{if(normalize(r.name+' '+r.company).includes(q))selected.add(i)});refresh()});
+$('company-search').addEventListener('input',refresh);
+$('all').addEventListener('click',()=>{const person=$('search').value,company=$('company-search').value;rows.forEach((r,i)=>{if(matchesFilters(r,person,company))selected.add(i)});refresh()});
 $('clear').addEventListener('click',()=>{selected.clear();refresh()});
-$('download').addEventListener('click',()=>{const content=[...selected].sort((a,b)=>a-b).map(i=>commandFor(rows[i])).join(''); const bytes=Uint8Array.from(content, c=>c.charCodeAt(0)); const url=URL.createObjectURL(new Blob([bytes],{type:'application/octet-stream'})); const a=document.createElement('a'); a.href=url;a.download='etiquetas-prueba.prn';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+$('previous').addEventListener('click',()=>{previewIndex--;refresh()});
+$('next').addEventListener('click',()=>{previewIndex++;refresh()});
+async function findPrinters() {
+  const select=$('printer'); const previous=printerName; printerName=''; $('print').disabled=true; $('refresh-printers').disabled=true;
+  $('printer-status').textContent='Buscando impresoras…'; select.hidden=true; $('printer-label').hidden=true;
+  try {
+    if(location.protocol==='file:') throw Error('Abrí la aplicación desde http://127.0.0.1:4173 para conectar la impresora.');
+    const response=await fetch('/api/printers',{cache:'no-store'}); const data=await response.json(); if(!response.ok) throw Error(data.error || 'No se pudo buscar la impresora.');
+    const printers=data.printers; select.replaceChildren();
+    if(!printers.length) { $('printer-status').textContent='No encontramos una impresora TSC USB o de red instalada. Revisá la conexión y el controlador.'; }
+    else if(printers.length===1) { printerName=printers[0].name; $('printer-status').textContent=`Impresora detectada: ${printerName} (${printers[0].connection}${printers[0].address ? ' · '+printers[0].address : ''}). Comprobá que esté encendida y tenga etiquetas.`; }
+    else {
+      const placeholder=document.createElement('option'); placeholder.value=''; placeholder.textContent='Elegí una impresora'; select.append(placeholder);
+      printers.forEach(p=>{const option=document.createElement('option');option.value=p.name;option.textContent=`${p.name} (${p.connection}${p.address ? ' · '+p.address : ''})`;select.append(option)});
+      if(printers.some(p=>p.name===previous)) printerName=previous;
+      select.value=printerName; select.hidden=false; $('printer-label').hidden=false;
+      $('printer-status').textContent=printerName ? 'Impresora seleccionada. Comprobá que esté encendida y tenga etiquetas.' : 'Encontramos varias impresoras TSC instaladas. Elegí una.';
+    }
+  } catch(e) { $('printer-status').textContent=`No se pudo conectar con el servicio de impresión. ${e.message}`; }
+  finally { $('refresh-printers').disabled=false; refresh(); }
+}
+$('refresh-printers').addEventListener('click',findPrinters);
+$('scan-network').addEventListener('click',async()=>{const button=$('scan-network'),list=$('scan-results');button.disabled=true;list.replaceChildren();$('scan-status').textContent='Buscando dispositivos en la red local…';try{const response=await fetch('/api/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const data=await response.json();if(!response.ok)throw Error(data.error||'No se pudo buscar.');$('scan-status').textContent=data.addresses.length?'Dispositivos con puerto 9100 abierto; verificá que sean impresoras TSC antes de instalarlos en Windows.':'No se encontraron dispositivos con el puerto 9100 abierto en las redes examinadas.';data.addresses.forEach(ip=>{const li=document.createElement('li');li.textContent=ip;list.append(li)});}catch(e){$('scan-status').textContent=`No se pudo buscar: ${e.message}`;}finally{button.disabled=false;}});
+$('printer').addEventListener('change',()=>{printerName=$('printer').value;$('printer-status').textContent=printerName?'Impresora seleccionada. Comprobá que esté encendida y tenga etiquetas.':'Elegí una impresora.';refresh()});
+document.addEventListener('DOMContentLoaded',findPrinters);
+$('print').addEventListener('click',async()=>{
+  const chosen=[...selected].sort((a,b)=>a-b).map(i=>rows[i]);
+  if (!chosen.length || !printerName || printing || !confirm(`Se enviarán ${chosen.length} etiquetas a ${printerName}. ¿Continuar?`)) return;
+  if (location.protocol === 'file:') { $('print-status').textContent='Para imprimir, iniciá el servicio local y abrí http://127.0.0.1:4173.'; return; }
+  printing=true; refresh(); $('print-status').textContent='Enviando a la impresora…';
+  try { const response=await fetch('/api/print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rows:chosen,printer:printerName})}); const data=await response.json(); if(!response.ok) throw new Error(data.error || 'No se pudo enviar el trabajo.'); $('print-status').textContent=`Se enviaron ${chosen.length} etiquetas a la cola de Windows. Revisá la impresora.`; }
+  catch(e) { $('print-status').textContent=`No se pudo confirmar el envío: ${e.message} Revisá la cola antes de reintentar.`; }
+  finally { printing=false; $('print').disabled=!selected.size || !printerName; }
+});
