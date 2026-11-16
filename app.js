@@ -34,7 +34,7 @@ function commandFor(r) {
     if (value.length > 35) throw new Error('Hay un texto de más de 35 caracteres; acortalo antes de generar la prueba.');
     if (/[^\x20-\x7e\xa0-\xff]/.test(value) || /["\\]/.test(value)) throw new Error('Hay caracteres que la plantilla de prueba no admite. Revisá comillas, símbolos o caracteres especiales.');
   }
-  return `SIZE 60 mm, 40 mm\r\nGAP 2 mm, 0 mm\r\nDIRECTION 1\r\nCODEPAGE 1252\r\nCLS\r\nTEXT 24,60,"3",0,1,1,"${r.name}"\r\nTEXT 24,180,"3",0,1,1,"${r.company}"\r\nPRINT 1\r\n`;
+  return `SIZE 60 mm, 40 mm\r\nGAP 2 mm, 0 mm\r\nDIRECTION 1\r\nCODEPAGE 1252\r\nCLS\r\nTEXT 240,60,"0",0,16,16,2,"${r.name}"\r\nTEXT 240,180,"0",0,16,16,2,"${r.company}"\r\nPRINT 1\r\n`;
 }
 function refresh() {
   const person = $('search').value, companyQuery = $('company-search').value, list = $('list'); list.replaceChildren();

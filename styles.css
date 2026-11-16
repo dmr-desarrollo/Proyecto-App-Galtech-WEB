@@ -2,3 +2,4 @@
 /* Acciones secundarias del archivo, alineadas al final del bloque de carga. */
 .csv-actions{display:flex;justify-content:flex-end;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px}
 .csv-buttons{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.label strong,.label span{font-size:16pt;font-weight:bold;text-align:center}

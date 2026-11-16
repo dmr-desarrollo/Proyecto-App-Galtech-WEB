@@ -17,6 +17,8 @@ test('rechaza encabezados incompletos y CSV mal formado',()=>{
 });
 test('genera TSPL e impide insertar comandos',()=>{
   assert.match(context.commandFor({name:'María Pérez',company:'Galtech'}),/SIZE 60 mm, 40 mm/);
+  assert.match(context.commandFor({name:'María Pérez',company:'Galtech'}),/TEXT 240,60,"0",0,16,16,2,"María Pérez"/);
+  assert.match(context.commandFor({name:'María Pérez',company:'Galtech'}),/TEXT 240,180,"0",0,16,16,2,"Galtech"/);
   assert.throws(()=>context.commandFor({name:'Ana"\r\nPRINT 99',company:'Galtech'}));
 });
 test('combina los filtros de persona y empresa sin distinguir acentos',()=>{
