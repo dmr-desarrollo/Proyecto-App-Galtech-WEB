@@ -51,6 +51,7 @@ function refresh() {
   rows.forEach((r,i) => { if (!matchesFilters(r,person,companyQuery)) return; const label = document.createElement('label'); label.className='person'; const box=document.createElement('input'); box.type='checkbox'; box.checked=selected.has(i); box.addEventListener('change',()=>{box.checked ? selected.add(i) : selected.delete(i); refresh();}); const text=document.createElement('span'), name=document.createElement('strong'), company=document.createElement('small'); name.textContent=r.name; company.textContent=r.company; text.append(name,document.createElement('br'),company); label.append(box,text); list.append(label); });
   if (!list.children.length) { const p=document.createElement('p'); p.textContent=rows.length ? 'No hay coincidencias.' : 'Cargá un CSV o agregá una persona manualmente.'; list.append(p); }
   $('count').textContent=`${selected.size} seleccionadas`; $('clear').disabled=!selected.size;
+  $('clear-manual-people').disabled=!rows.some(row=>row.source==='manual');
   const chosen=[...selected].sort((a,b)=>a-b).map(i=>rows[i]);
   previewIndex=Math.min(previewIndex,Math.max(0,chosen.length-1));
   $('preview-name').textContent=chosen[previewIndex]?.name || 'Nombre Apellido'; $('preview-company').textContent=chosen[previewIndex]?.company || 'Empresa';
@@ -72,6 +73,20 @@ $('manual-form').addEventListener('submit',e=>{
   $('search').disabled=false; $('company-search').disabled=false; $('all').disabled=false;
   previewIndex=selected.size-1; $('manual-status').textContent=`${row.name} se agregó y quedó seleccionada para imprimir.`;
   refresh(); $('manual-name').focus();
+});
+$('clear-manual-fields').addEventListener('click',()=>{
+  for(const id of ['manual-name','manual-lastname','manual-company']) $(id).value='';
+  $('manual-status').textContent='Campos limpiados.'; $('manual-name').focus();
+});
+$('clear-manual-people').addEventListener('click',()=>{
+  if(!rows.some(row=>row.source==='manual') || !confirm('¿Quitar todas las personas agregadas manualmente? Las personas del CSV se conservarán.')) return;
+  const chosen=new Set([...selected].map(i=>rows[i]));
+  rows=rows.filter(row=>row.source!=='manual');
+  selected=new Set(rows.map((row,i)=>chosen.has(row)?i:-1).filter(i=>i>=0));
+  previewIndex=0;
+  $('search').disabled=!rows.length; $('company-search').disabled=!rows.length; $('all').disabled=!rows.length;
+  $('manual-status').textContent='Se quitaron las personas agregadas manualmente.';
+  refresh();
 });
 $('search').addEventListener('input',refresh);
 $('company-search').addEventListener('input',refresh);
