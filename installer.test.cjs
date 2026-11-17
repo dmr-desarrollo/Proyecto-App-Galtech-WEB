@@ -9,7 +9,7 @@ const http = require('node:http');
 const {setTimeout: delay} = require('node:timers/promises');
 
 test('el paquete extraído arranca el puente sin instalar Node y restringe los orígenes', async () => {
-  const installer=path.join(__dirname,'dist','Instalar-Galtech-selector-v2.exe');
+  const installer=path.join(__dirname,'dist','Instalar-Galtech-selector-v3.exe');
   assert.ok(fs.existsSync(installer),'Primero hay que construir el instalador');
   const temp=fs.mkdtempSync(path.join(os.tmpdir(),'galtech-installer-test-'));
   const output=path.join(temp,'contenido');
@@ -37,5 +37,8 @@ test('el paquete extraído arranca el puente sin instalar Node y restringe los o
     const allowed=await request('https://galtech-etiquetas.netlify.app');
     assert.equal(allowed.status,200);
     assert.equal(allowed.allowed,'https://galtech-etiquetas.netlify.app');
+    const preview=await request('https://deploy-preview-2--galtech-etiquetas.netlify.app');
+    assert.equal(preview.status,200);
+    assert.equal(preview.allowed,'https://deploy-preview-2--galtech-etiquetas.netlify.app');
   } finally { if(service && service.exitCode===null){service.kill();await new Promise(resolve=>service.once('exit',resolve));} fs.rmSync(temp,{recursive:true,force:true}); }
 });

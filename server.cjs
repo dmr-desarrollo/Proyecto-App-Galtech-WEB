@@ -12,7 +12,7 @@ const files = {'/':['index.html','text/html; charset=utf-8'], '/index.html':['in
 let busy=false, scanning=false;
 function listPrinters() {
   return new Promise((resolve,reject)=>{
-    const child=spawn('powershell.exe',['-NoProfile','-NonInteractive','-File',path.join(root,'list-printers.ps1')],{windowsHide:true}); let output='',error='';
+    const child=spawn('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(root,'list-printers.ps1')],{windowsHide:true}); let output='',error='';
     child.stdout.on('data',chunk=>{output+=chunk}); child.stderr.on('data',chunk=>{error+=chunk}); child.on('error',reject);
     child.on('close',code=>{if(code!==0) return reject(Error(error.trim()||'No se pudieron buscar impresoras.')); try{const parsed=JSON.parse(output);if(!Array.isArray(parsed))throw Error('Respuesta inesperada.');resolve(parsed);}catch(e){reject(e)}});
   });
@@ -44,7 +44,7 @@ const server=http.createServer(async(req,res)=>{
     const commands=payload.rows.map(r=>{if(!r||typeof r.name!=='string'||typeof r.company!=='string'||!r.name.trim()||!r.company.trim()) throw Error('Datos incompletos.');return context.commandFor(r);}).join('');
     const encoded=Buffer.from(commands,'latin1').toString('base64');
     await new Promise((resolve,reject)=>{
-      const child=spawn('powershell.exe',['-NoProfile','-NonInteractive','-File',path.join(root,'print-raw.ps1'),'-PrinterName',payload.printer],{windowsHide:true}); let error='';
+      const child=spawn('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(root,'print-raw.ps1'),'-PrinterName',payload.printer],{windowsHide:true}); let error='';
       child.stderr.on('data',chunk=>{error+=chunk}); child.on('error',reject); child.on('close',code=>code===0?resolve():reject(Error(error.trim()||'Falló la cola de impresión.')));child.stdin.end(encoded);
     });
     reply(200,{ok:true});
