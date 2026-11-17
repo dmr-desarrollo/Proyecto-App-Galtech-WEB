@@ -38,10 +38,18 @@ function commandFor(r) {
   }
   return `SIZE 60 mm, 40 mm\r\nGAP 2 mm, 0 mm\r\nDIRECTION 1\r\nCODEPAGE 1252\r\nCLS\r\nTEXT 240,60,"0",0,16,16,2,"${r.name}"\r\nTEXT 240,180,"0",0,16,16,2,"${r.company}"\r\nPRINT 1\r\n`;
 }
+function replaceCsvRows(csvRows) {
+  const chosen = new Set([...selected].map(i => rows[i]));
+  const manualRows = rows.filter(row => row.source === 'manual');
+  rows = [...csvRows.map(row => ({...row, source:'csv'})), ...manualRows];
+  selected = new Set(rows.map((row,i) => chosen.has(row) ? i : -1).filter(i => i >= 0));
+  previewIndex = 0;
+  $('search').disabled = !rows.length; $('company-search').disabled = !rows.length; $('all').disabled = !rows.length;
+}
 function refresh() {
   const person = $('search').value, companyQuery = $('company-search').value, list = $('list'); list.replaceChildren();
   rows.forEach((r,i) => { if (!matchesFilters(r,person,companyQuery)) return; const label = document.createElement('label'); label.className='person'; const box=document.createElement('input'); box.type='checkbox'; box.checked=selected.has(i); box.addEventListener('change',()=>{box.checked ? selected.add(i) : selected.delete(i); refresh();}); const text=document.createElement('span'), name=document.createElement('strong'), company=document.createElement('small'); name.textContent=r.name; company.textContent=r.company; text.append(name,document.createElement('br'),company); label.append(box,text); list.append(label); });
-  if (!list.children.length) { const p=document.createElement('p'); p.textContent=rows.length ? 'No hay coincidencias.' : 'Cargá un CSV para ver las personas aquí.'; list.append(p); }
+  if (!list.children.length) { const p=document.createElement('p'); p.textContent=rows.length ? 'No hay coincidencias.' : 'Cargá un CSV o agregá una persona manualmente.'; list.append(p); }
   $('count').textContent=`${selected.size} seleccionadas`; $('clear').disabled=!selected.size;
   const chosen=[...selected].sort((a,b)=>a-b).map(i=>rows[i]);
   previewIndex=Math.min(previewIndex,Math.max(0,chosen.length-1));
@@ -51,8 +59,20 @@ function refresh() {
   try { chosen.forEach(commandFor); $('print').disabled=!chosen.length || printing || !printerName; $('print-status').textContent=''; }
   catch(e) { $('print-status').textContent=e.message; $('print').disabled=true; }
 }
-$('file').addEventListener('change', async e => { const file=e.target.files[0]; if (!file) return; try { const bytes=await file.arrayBuffer(); let text; try { text=new TextDecoder('utf-8',{fatal:true}).decode(bytes); } catch { text=new TextDecoder('windows-1252').decode(bytes); } const result=loadCSV(text); rows=result.valid; selected=new Set(); previewIndex=0; $('search').value=''; $('company-search').value=''; $('search').disabled=!rows.length; $('company-search').disabled=!rows.length; $('all').disabled=!rows.length; $('remove-file').disabled=false; $('status').textContent=`${file.name}: ${rows.length} personas cargadas.`+(result.invalid.length ? ` Filas incompletas omitidas: ${result.invalid.join(', ')}.` : ''); refresh(); } catch(err) { $('status').textContent=err.message+' No se reemplazó la lista anterior.'; } e.target.value=''; });
-$('remove-file').addEventListener('click',()=>{if(!confirm('¿Quitar el CSV cargado y la selección actual?')) return; rows=[];selected=new Set();previewIndex=0;for(const id of ['search','company-search']){$(id).value='';$(id).disabled=true;} $('file').value='';$('all').disabled=true;$('remove-file').disabled=true;$('status').textContent='Todavía no cargaste ningún archivo.';refresh();});
+$('file').addEventListener('change', async e => { const file=e.target.files[0]; if (!file) return; try { const bytes=await file.arrayBuffer(); let text; try { text=new TextDecoder('utf-8',{fatal:true}).decode(bytes); } catch { text=new TextDecoder('windows-1252').decode(bytes); } const result=loadCSV(text); replaceCsvRows(result.valid); $('search').value=''; $('company-search').value=''; $('remove-file').disabled=false; $('status').textContent=`${file.name}: ${result.valid.length} personas cargadas.`+(result.invalid.length ? ` Filas incompletas omitidas: ${result.invalid.join(', ')}.` : ''); refresh(); } catch(err) { $('status').textContent=err.message+' No se reemplazó la lista anterior.'; } e.target.value=''; });
+$('remove-file').addEventListener('click',()=>{if(!confirm('¿Quitar las personas cargadas desde el CSV? Las personas agregadas manualmente se conservarán.')) return; replaceCsvRows([]); for(const id of ['search','company-search']) $(id).value=''; $('file').value='';$('remove-file').disabled=true;$('status').textContent='Todavía no cargaste ningún archivo.';refresh();});
+$('manual-form').addEventListener('submit',e=>{
+  e.preventDefault();
+  const fields=['manual-name','manual-lastname','manual-company'].map(id=>$(id).value.trim().replace(/\s+/g,' '));
+  if(fields.some(value=>!value)) { $('manual-status').textContent='Completá nombre, apellido y empresa.'; return; }
+  const row={name:fields[0]+' '+fields[1],company:fields[2],source:'manual'};
+  try { commandFor(row); } catch(err) { $('manual-status').textContent=err.message; return; }
+  rows.push(row); selected.add(rows.length-1);
+  for(const id of ['manual-name','manual-lastname','manual-company','search','company-search']) $(id).value='';
+  $('search').disabled=false; $('company-search').disabled=false; $('all').disabled=false;
+  previewIndex=selected.size-1; $('manual-status').textContent=`${row.name} se agregó y quedó seleccionada para imprimir.`;
+  refresh(); $('manual-name').focus();
+});
 $('search').addEventListener('input',refresh);
 $('company-search').addEventListener('input',refresh);
 $('all').addEventListener('click',()=>{const person=$('search').value,company=$('company-search').value;rows.forEach((r,i)=>{if(matchesFilters(r,person,company))selected.add(i)});refresh()});
