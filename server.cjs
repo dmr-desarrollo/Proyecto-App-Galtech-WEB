@@ -18,13 +18,13 @@ function listPrinters() {
   });
 }
 const server=http.createServer(async(req,res)=>{
-  const localOrigin='http://127.0.0.1:4173', hostedOrigin='https://galtech-etiquetas.netlify.app', previewOrigin='https://deploy-preview-2--galtech-etiquetas.netlify.app';
-  const origin=req.headers.origin, authorizedOrigin=origin===localOrigin||origin===hostedOrigin||origin===previewOrigin;
+  const localOrigin='http://127.0.0.1:4173', hostedOrigin='https://galtech-etiquetas.netlify.app', previewOrigin='https://deploy-preview-2--galtech-etiquetas.netlify.app', manualPreviewOrigin='https://deploy-preview-4--galtech-etiquetas.netlify.app';
+  const origin=req.headers.origin, authorizedOrigin=origin===localOrigin||origin===hostedOrigin||origin===previewOrigin||origin===manualPreviewOrigin;
   res.setHeader('X-Content-Type-Options','nosniff');
   if(req.headers.host!=='127.0.0.1:4173'){res.writeHead(403);return res.end('Forbidden');}
   if(req.url.startsWith('/api/')) {
     if(origin && !authorizedOrigin){res.writeHead(403);return res.end('Forbidden');}
-    if(origin===hostedOrigin||origin===previewOrigin){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');}
+    if(origin===hostedOrigin||origin===previewOrigin||origin===manualPreviewOrigin){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');}
     if(req.method==='OPTIONS'){
       if(!authorizedOrigin){res.writeHead(403);return res.end('Forbidden');}
       res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type','Access-Control-Max-Age':'600'});return res.end();
