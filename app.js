@@ -1,6 +1,6 @@
 /* El archivo CSV se procesa localmente. La plantilla TSPL necesita calibración. */
 const $ = id => document.getElementById(id);
-let rows = [], selected = new Set(), previewIndex = 0, printing = false, printerName = '';
+let rows = [], selected = new Set(), previewIndex = 0, printing = false, printerName = '', editingIndex = null;
 const bridgeBase = 'http://127.0.0.1:4173';
 function bridgeFetch(path, options={}) { return fetch(bridgeBase+path,{...options,targetAddressSpace:'loopback'}); }
 
@@ -28,25 +28,42 @@ function loadCSV(text) {
   const headings = data[0].map(normalize), indexes = ['nombre','apellido','empresa'].map(x => headings.indexOf(x));
   if (indexes.some(i => i < 0)) throw new Error('El CSV necesita encabezados Nombre, Apellido y Empresa.');
   const valid = [], invalid = [];
-  data.slice(1).forEach((r,i) => { const values = indexes.map(j => (r[j] || '').trim().replace(/\s+/g,' ')); if (values.some(v => !v)) invalid.push(i+2); else valid.push({name: values[0]+' '+values[1], company: values[2]}); });
+  data.slice(1).forEach((r,i) => { const values = indexes.map(j => (r[j] || '').trim().replace(/\s+/g,' ')); if (values.some(v => !v)) invalid.push(i+2); valid.push({firstName:values[0],lastName:values[1],name:[values[0],values[1]].filter(Boolean).join(' '),company:values[2]}); });
   return {valid, invalid};
 }
 function labelLines(value) {
-  if (value.length<=26) return [value];
-  let split=value.lastIndexOf(' ',26);
-  if(split<1 || value.length-split-1>26) split=26;
-  const first=value.slice(0,split).trimEnd(), second=value.slice(split).trimStart();
-  if(!second || second.length>26) throw new Error('El texto no entra en dos líneas de la etiqueta. Acortalo antes de imprimir.');
-  return [first,second];
+  const lines=[]; let remaining=value;
+  while(remaining.length>20) {
+    let split=remaining.lastIndexOf(' ',20);
+    if(split<1) split=20;
+    lines.push(remaining.slice(0,split).trimEnd()); remaining=remaining.slice(split).trimStart();
+  }
+  if(remaining) lines.push(remaining);
+  if(lines.length>3) throw new Error('El texto no entra en tres líneas de la etiqueta. Acortalo antes de imprimir.');
+  return lines.length?lines:[''];
 }
 function commandFor(r) {
+  if (!r.name.trim() || !r.company.trim() || (r.firstName!==undefined && (!r.firstName.trim() || !r.lastName.trim()))) throw new Error('Completá el nombre, apellido y empresa de las personas seleccionadas antes de imprimir.');
   for (const value of [r.name,r.company]) {
     if (/[^\x20-\x7e\xa0-\xff]/.test(value) || /["\\]/.test(value)) throw new Error('Hay caracteres que la plantilla de prueba no admite. Revisá comillas, símbolos o caracteres especiales.');
   }
-  const text=(value,y)=>{const lines=labelLines(value);return lines.map((line,i)=>`TEXT 240,${y+(lines.length===2?(i===0?-26:26):0)},"0",0,16,16,2,"${line}"\r\n`).join('');};
-  return `SIZE 60 mm, 40 mm\r\nGAP 2 mm, 0 mm\r\nDIRECTION 1\r\nCODEPAGE 1252\r\nCLS\r\n${text(r.name,60)}${text(r.company,180)}PRINT 1\r\n`;
+  const text=(value,y,size)=>{const lines=labelLines(value);const positions=lines.length===3?(y===60?[8,56,104]:[160,210,260]):lines.length===2?[y-26,y+26]:[y];return lines.map((line,i)=>`TEXT 240,${positions[i]},"0",0,${size},${size},2,"${line}"\r\n`).join('');};
+  return `SIZE 60 mm, 40 mm\r\nGAP 2 mm, 0 mm\r\nDIRECTION 1\r\nCODEPAGE 1252\r\nCLS\r\n${text(r.name,60,16)}${text(r.company,180,15)}PRINT 1\r\n`;
+}
+function incomplete(row) { return !row.firstName || !row.lastName || !row.company; }
+function resetEditor() {
+  editingIndex=null; for(const id of ['manual-name','manual-lastname','manual-company']) $(id).value='';
+  $('manual-submit').textContent='Agregar y seleccionar'; $('cancel-edit').hidden=true;
+}
+function editPerson(index) {
+  const row=rows[index]; if(!row) return;
+  editingIndex=index; $('manual-name').value=row.firstName || ''; $('manual-lastname').value=row.lastName || ''; $('manual-company').value=row.company || '';
+  $('manual-details').open=true; $('manual-submit').textContent='Guardar y seleccionar'; $('cancel-edit').hidden=false;
+  $('manual-status').textContent='Completá los datos de esta persona y guardá los cambios.';
+  $( !row.firstName ? 'manual-name' : !row.lastName ? 'manual-lastname' : 'manual-company' ).focus();
 }
 function replaceCsvRows(csvRows) {
+  resetEditor();
   const chosen = new Set([...selected].map(i => rows[i]));
   const manualRows = rows.filter(row => row.source === 'manual');
   rows = [...csvRows.map(row => ({...row, source:'csv'})), ...manualRows];
@@ -56,7 +73,7 @@ function replaceCsvRows(csvRows) {
 }
 function refresh() {
   const person = $('search').value, companyQuery = $('company-search').value, list = $('list'); list.replaceChildren();
-  rows.forEach((r,i) => { if (!matchesFilters(r,person,companyQuery)) return; const label = document.createElement('label'); label.className='person'; const box=document.createElement('input'); box.type='checkbox'; box.checked=selected.has(i); box.addEventListener('change',()=>{box.checked ? selected.add(i) : selected.delete(i); refresh();}); const text=document.createElement('span'), name=document.createElement('strong'), company=document.createElement('small'); name.textContent=r.name; company.textContent=r.company; text.append(name,document.createElement('br'),company); label.append(box,text); list.append(label); });
+  rows.forEach((r,i) => { if (!matchesFilters(r,person,companyQuery)) return; const item=document.createElement('div'); item.className='person'; const label=document.createElement('label'); const box=document.createElement('input'); box.type='checkbox'; box.checked=selected.has(i); box.addEventListener('change',()=>{box.checked ? selected.add(i) : selected.delete(i); if(box.checked && incomplete(r)) editPerson(i); refresh();}); const text=document.createElement('span'), name=document.createElement('strong'), company=document.createElement('small'); name.textContent=r.name || 'Nombre y apellido pendientes'; company.textContent=r.company || 'Empresa pendiente'; text.append(name,document.createElement('br'),company); label.append(box,text); item.append(label); if(incomplete(r)){const edit=document.createElement('button'); edit.type='button'; edit.textContent='Completar datos'; edit.addEventListener('click',()=>editPerson(i)); item.append(edit);} list.append(item); });
   if (!list.children.length) { const p=document.createElement('p'); p.textContent=rows.length ? 'No hay coincidencias.' : 'Cargá un CSV o agregá una persona manualmente.'; list.append(p); }
   $('count').textContent=`${selected.size} seleccionadas`; $('clear').disabled=!selected.size;
   $('clear-manual-people').disabled=!rows.some(row=>row.source==='manual');
@@ -70,27 +87,28 @@ function refresh() {
   try { chosen.forEach(commandFor); $('print').disabled=!chosen.length || printing || !printerName; $('print-status').textContent=''; }
   catch(e) { $('print-status').textContent=e.message; $('print').disabled=true; }
 }
-$('file').addEventListener('change', async e => { const file=e.target.files[0]; if (!file) return; try { const bytes=await file.arrayBuffer(); let text; try { text=new TextDecoder('utf-8',{fatal:true}).decode(bytes); } catch { text=new TextDecoder('windows-1252').decode(bytes); } const result=loadCSV(text); replaceCsvRows(result.valid); $('search').value=''; $('company-search').value=''; $('remove-file').disabled=false; $('status').textContent=`${file.name}: ${result.valid.length} personas cargadas.`+(result.invalid.length ? ` Filas incompletas omitidas: ${result.invalid.join(', ')}.` : ''); refresh(); } catch(err) { $('status').textContent=err.message+' No se reemplazó la lista anterior.'; } e.target.value=''; });
+$('file').addEventListener('change', async e => { const file=e.target.files[0]; if (!file) return; try { const bytes=await file.arrayBuffer(); let text; try { text=new TextDecoder('utf-8',{fatal:true}).decode(bytes); } catch { text=new TextDecoder('windows-1252').decode(bytes); } const result=loadCSV(text); replaceCsvRows(result.valid); $('search').value=''; $('company-search').value=''; $('remove-file').disabled=false; $('status').textContent=`${file.name}: ${result.valid.length} registros cargados.`+(result.invalid.length ? ` ${result.invalid.length} con datos pendientes para completar.` : ''); refresh(); } catch(err) { $('status').textContent=err.message+' No se reemplazó la lista anterior.'; } e.target.value=''; });
 $('remove-file').addEventListener('click',()=>{if(!confirm('¿Quitar las personas cargadas desde el CSV? Las personas agregadas manualmente se conservarán.')) return; replaceCsvRows([]); for(const id of ['search','company-search']) $(id).value=''; $('file').value='';$('remove-file').disabled=true;$('status').textContent='Todavía no cargaste ningún archivo.';refresh();});
 $('manual-form').addEventListener('submit',e=>{
   e.preventDefault();
   const fields=['manual-name','manual-lastname','manual-company'].map(id=>$(id).value.trim().replace(/\s+/g,' '));
   if(fields.some(value=>!value)) { $('manual-status').textContent='Completá nombre, apellido y empresa.'; return; }
-  const row={name:fields[0]+' '+fields[1],company:fields[2],source:'manual'};
+  const row={firstName:fields[0],lastName:fields[1],name:fields[0]+' '+fields[1],company:fields[2],source:editingIndex===null?'manual':rows[editingIndex].source};
   try { commandFor(row); } catch(err) { $('manual-status').textContent=err.message; return; }
-  rows.push(row); selected.add(rows.length-1);
-  for(const id of ['manual-name','manual-lastname','manual-company','search','company-search']) $(id).value='';
+  const index=editingIndex===null?rows.length:editingIndex; rows[index]=row; selected.add(index); resetEditor();
+  for(const id of ['search','company-search']) $(id).value='';
   $('search').disabled=false; $('company-search').disabled=false; $('all').disabled=false;
-  previewIndex=selected.size-1; $('manual-status').textContent=`${row.name} se agregó y quedó seleccionada para imprimir.`;
+  previewIndex=[...selected].sort((a,b)=>a-b).indexOf(index); $('manual-status').textContent=`${row.name} quedó seleccionada para imprimir.`;
   refresh(); $('manual-name').focus();
 });
+$('cancel-edit').addEventListener('click',()=>{resetEditor(); $('manual-status').textContent='Edición cancelada.';});
 $('clear-manual-fields').addEventListener('click',()=>{
   for(const id of ['manual-name','manual-lastname','manual-company']) $(id).value='';
   $('manual-status').textContent='Campos limpiados.'; $('manual-name').focus();
 });
 $('clear-manual-people').addEventListener('click',()=>{
   if(!rows.some(row=>row.source==='manual') || !confirm('¿Quitar todas las personas agregadas manualmente? Las personas del CSV se conservarán.')) return;
-  const chosen=new Set([...selected].map(i=>rows[i]));
+  resetEditor(); const chosen=new Set([...selected].map(i=>rows[i]));
   rows=rows.filter(row=>row.source!=='manual');
   selected=new Set(rows.map((row,i)=>chosen.has(row)?i:-1).filter(i=>i>=0));
   previewIndex=0;

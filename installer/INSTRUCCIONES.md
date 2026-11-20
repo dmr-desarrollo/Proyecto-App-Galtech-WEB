@@ -5,7 +5,7 @@ El instalador incluye Node.js y los archivos del puente. No es necesario instala
 ## Prueba en otra computadora
 
 1. Usar Windows de 64 bits y comprobar que la impresora TSC esté instalada en Windows y tenga su controlador, por USB o por IP.
-2. Copiar `Instalar-Galtech-v5-texto-largo-prueba.exe` a esa computadora y abrirlo. El ejecutable es una versión de prueba sin firma digital; Windows o la política de la empresa pueden bloquearlo. No desactivar las protecciones del equipo: consultar con soporte si aparece un bloqueo.
+2. Copiar `Instalar-Galtech-v6-prueba.exe` a esa computadora y abrirlo. El ejecutable es una versión de prueba sin firma digital; Windows o la política de la empresa pueden bloquearlo. No desactivar las protecciones del equipo: consultar con soporte si aparece un bloqueo.
 3. Confirmar la instalación. Se instala para el usuario actual en `%LOCALAPPDATA%\GaltechEtiquetas\versiones` y configura el inicio automático de ese mismo usuario. No modifica los controladores ni configura las impresoras.
 4. Para probar textos largos, abrir https://deploy-preview-5--galtech-etiquetas.netlify.app/ en Chrome o Edge. Pulsar **Buscar impresora instalada** y permitir el acceso a la red local si el navegador lo solicita. El puente también admite la web principal y los deploys 2 y 4.
 5. Cargar el CSV, elegir la impresora y probar una sola etiqueta antes de imprimir varias.
@@ -21,4 +21,4 @@ Desde la configuración de aplicaciones de inicio de Windows, desactivar **Galte
 
 ## Para el equipo técnico
 
-En la carpeta del proyecto, con Node.js v22.19.0 y el compilador de .NET Framework disponibles, ejecutar `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-installer.ps1`. El resultado queda en `dist\Instalar-Galtech-v5-texto-largo-prueba.exe`. El instalador incorpora la licencia de Node.js. Para comprobar el paquete, con el puerto 4173 libre, ejecutar `node --test installer.test.cjs bridge-origins.test.cjs app.test.cjs network-scan.test.cjs list-printers.test.cjs`. La comparación con Java es opcional y requiere Java disponible durante las pruebas; no se instala Java en los equipos de los usuarios.
+En la carpeta del proyecto, con Node.js v22.19.0 y el compilador de .NET Framework disponibles, ejecutar `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-installer.ps1`. El resultado queda en `dist\Instalar-Galtech-v6-prueba.exe`. El instalador incorpora la licencia de Node.js. Para comprobar el paquete, con el puerto 4173 libre, ejecutar `node --test installer.test.cjs bridge-origins.test.cjs app.test.cjs network-scan.test.cjs list-printers.test.cjs`. La comparación con Java es opcional y requiere Java disponible durante las pruebas; no se instala Java en los equipos de los usuarios.

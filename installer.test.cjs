@@ -9,7 +9,7 @@ const http = require('node:http');
 const {setTimeout: delay} = require('node:timers/promises');
 
 test('el paquete extraído arranca el puente sin instalar Node y restringe los orígenes', async () => {
-  const installer=path.join(__dirname,'dist','Instalar-Galtech-v5-texto-largo-prueba.exe');
+  const installer=path.join(__dirname,'dist','Instalar-Galtech-v6-prueba.exe');
   assert.ok(fs.existsSync(installer),'Primero hay que construir el instalador');
   const temp=fs.mkdtempSync(path.join(os.tmpdir(),'galtech-installer-test-'));
   const output=path.join(temp,'contenido');

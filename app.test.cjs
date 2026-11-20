@@ -10,6 +10,9 @@ test('lee columnas en distinto orden, comillas y acentos',()=>{
   assert.equal(result.valid[0].name,'María Pérez');
   assert.equal(result.valid[0].company,'A; B');
   assert.equal(result.invalid[0],3);
+  assert.equal(result.valid.length,2);
+  assert.equal(result.valid[1].firstName,'Juan');
+  assert.equal(result.valid[1].lastName,'');
 });
 test('rechaza encabezados incompletos y CSV mal formado',()=>{
   assert.throws(()=>context.loadCSV('Nombre;Empresa\nAna;A'));
@@ -18,29 +21,66 @@ test('rechaza encabezados incompletos y CSV mal formado',()=>{
 test('genera TSPL e impide insertar comandos',()=>{
   assert.match(context.commandFor({name:'María Pérez',company:'Galtech'}),/SIZE 60 mm, 40 mm/);
   assert.match(context.commandFor({name:'María Pérez',company:'Galtech'}),/TEXT 240,60,"0",0,16,16,2,"María Pérez"/);
-  assert.match(context.commandFor({name:'María Pérez',company:'Galtech'}),/TEXT 240,180,"0",0,16,16,2,"Galtech"/);
+  assert.match(context.commandFor({name:'María Pérez',company:'Galtech'}),/TEXT 240,180,"0",0,15,15,2,"Galtech"/);
   assert.throws(()=>context.commandFor({name:'Ana"\r\nPRINT 99',company:'Galtech'}));
 });
 test('divide texto largo en dos líneas y conserva la etiqueta completa',()=>{
   const row={name:'Ana Pérez',company:'Cámara Española de Comercio y Navegación'};
   const lines=context.labelLines(row.company);
-  assert.equal(lines.length,2);
+  assert.ok(lines.length>=2 && lines.length<=3);
   assert.equal(Array.from(lines).join(' '),row.company);
-  assert.ok(Array.from(lines).every(line=>line.length<=26));
+  assert.ok(Array.from(lines).every(line=>line.length<=20));
   const command=context.commandFor(row);
   for(const line of lines) assert.ok(command.includes('"'+line+'"'));
-  assert.match(command,/TEXT 240,154,"0",0,16,16,2,/);
-  assert.match(command,/TEXT 240,206,"0",0,16,16,2,/);
+  assert.match(command,/TEXT 240,160,"0",0,15,15,2,/);
+  assert.match(command,/TEXT 240,260,"0",0,15,15,2,/);
   assert.equal((command.match(/PRINT 1/g)||[]).length,1);
   const longName='Alejandro Sebastian Gonzalez Fernandez Lopez';
   const nameLines=context.labelLines(longName);
-  assert.equal(nameLines.length,2);
+  assert.ok(nameLines.length>=2 && nameLines.length<=3);
   assert.equal(Array.from(nameLines).join(' '),longName);
   const longNameCommand=context.commandFor({name:longName,company:'Empresa'});
   for(const line of nameLines) assert.ok(longNameCommand.includes('"'+line+'"'));
   assert.equal((longNameCommand.match(/PRINT 1/g)||[]).length,1);
-  assert.throws(()=>context.commandFor({name:'Ana Pérez',company:'A'.repeat(53)}),/no entra/i);
+  assert.throws(()=>context.commandFor({name:'Ana Pérez',company:'A'.repeat(61)}),/no entra/i);
   assert.throws(()=>context.commandFor({name:'Ana Pérez',company:'Empresa"\r\nPRINT 50'}));
+});
+test('reparte las líneas de nombre y empresa sin perder texto ni solaparlas',()=>{
+  const row={name:'Ana Maria Perez Gonzalez Fernandez Lopez',company:'Organización Internacional de Comercio Empresarial'};
+  const nameLines=Array.from(context.labelLines(row.name));
+  const companyLines=Array.from(context.labelLines(row.company));
+  assert.ok(nameLines.every(line=>line.length<=20));
+  assert.ok(companyLines.every(line=>line.length<=20));
+  assert.equal(nameLines.join(' '),row.name);
+  assert.equal(companyLines.join(' '),row.company);
+  const lines=context.commandFor(row).split('\r\n').filter(line=>line.startsWith('TEXT'));
+  assert.equal(lines.length,nameLines.length+companyLines.length);
+  const ys=lines.map(line=>Number(line.split(',')[1]));
+  for(let i=1;i<ys.length;i++) assert.ok(ys[i]-ys[i-1]>=46);
+  assert.ok(ys.at(-1)<=260);
+});
+test('conserva filas incompletas y permite completar la misma persona sin duplicarla',async()=>{
+  const elements=new Map();
+  const element=()=>({disabled:false,hidden:false,value:'',textContent:'',children:[],handlers:{},addEventListener(type,fn){this.handlers[type]=fn},replaceChildren(){this.children=[]},append(...items){this.children.push(...items)},focus(){}});
+  const document={getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id)},createElement(){return element()},addEventListener(){}};
+  const context=vm.createContext({document,TextDecoder,confirm:()=>true,location:{protocol:'https:',origin:'https://galtech-etiquetas.netlify.app'}});
+  vm.runInContext(fs.readFileSync('app.js','utf8'),context);
+  const csv='Nombre;Apellido;Empresa\nAna;Pérez;\n;;Acme\nLuis;Gómez;Empresa';
+  await elements.get('file').handlers.change({target:{files:[{name:'personas.csv',arrayBuffer:async()=>Buffer.from(csv)}],value:''}});
+  assert.equal(elements.get('list').children.length,3);
+  context.editPerson(0);
+  assert.equal(elements.get('manual-name').value,'Ana');
+  assert.equal(elements.get('manual-lastname').value,'Pérez');
+  elements.get('manual-company').value='Galtech';
+  elements.get('manual-form').handlers.submit({preventDefault(){}});
+  assert.equal(elements.get('list').children.length,3);
+  assert.equal(elements.get('preview-name').textContent,'Ana Pérez');
+  context.editPerson(1);
+  assert.equal(elements.get('manual-company').value,'Acme');
+  elements.get('manual-name').value='José'; elements.get('manual-lastname').value='Silva';
+  elements.get('manual-form').handlers.submit({preventDefault(){}});
+  assert.equal(elements.get('list').children.length,3);
+  assert.equal(elements.get('count').textContent,'2 seleccionadas');
 });
 test('combina los filtros de persona y empresa sin distinguir acentos',()=>{
   const person={name:'María Pérez',company:'Tecnología Sur'};

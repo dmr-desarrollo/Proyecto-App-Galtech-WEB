@@ -6,3 +6,5 @@
 .label strong,.label span{white-space:pre-line}
 
 .manual-entry{margin:16px 0;padding:14px;background:#f2f7f7;border-radius:8px}.manual-entry summary{font-weight:bold;color:#24465a;cursor:pointer}.manual-entry input{width:100%;padding:10px;border:1px solid #b8cbd5;border-radius:8px;margin-top:6px;font:inherit}.manual-entry p:empty{display:none}
+
+.label span{font-size:15pt}.person{justify-content:space-between;gap:8px}.person label:not(.button){display:flex;align-items:center;gap:12px;margin:0;flex:1}.person button{font-size:.85rem;padding:7px 10px}.manual-entry [hidden]{display:none}
