@@ -29,7 +29,16 @@ test('divide texto largo en dos líneas y conserva la etiqueta completa',()=>{
   assert.ok(Array.from(lines).every(line=>line.length<=26));
   const command=context.commandFor(row);
   for(const line of lines) assert.ok(command.includes('"'+line+'"'));
+  assert.match(command,/TEXT 240,154,"0",0,16,16,2,/);
+  assert.match(command,/TEXT 240,206,"0",0,16,16,2,/);
   assert.equal((command.match(/PRINT 1/g)||[]).length,1);
+  const longName='Alejandro Sebastian Gonzalez Fernandez Lopez';
+  const nameLines=context.labelLines(longName);
+  assert.equal(nameLines.length,2);
+  assert.equal(Array.from(nameLines).join(' '),longName);
+  const longNameCommand=context.commandFor({name:longName,company:'Empresa'});
+  for(const line of nameLines) assert.ok(longNameCommand.includes('"'+line+'"'));
+  assert.equal((longNameCommand.match(/PRINT 1/g)||[]).length,1);
   assert.throws(()=>context.commandFor({name:'Ana Pérez',company:'A'.repeat(53)}),/no entra/i);
   assert.throws(()=>context.commandFor({name:'Ana Pérez',company:'Empresa"\r\nPRINT 50'}));
 });

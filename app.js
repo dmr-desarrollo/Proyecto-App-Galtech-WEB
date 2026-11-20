@@ -43,7 +43,7 @@ function commandFor(r) {
   for (const value of [r.name,r.company]) {
     if (/[^\x20-\x7e\xa0-\xff]/.test(value) || /["\\]/.test(value)) throw new Error('Hay caracteres que la plantilla de prueba no admite. Revisá comillas, símbolos o caracteres especiales.');
   }
-  const text=(value,y)=>{const lines=labelLines(value);return lines.map((line,i)=>`TEXT 240,${y+(lines.length===2?(i===0?-16:16):0)},"0",0,16,16,2,"${line}"\r\n`).join('');};
+  const text=(value,y)=>{const lines=labelLines(value);return lines.map((line,i)=>`TEXT 240,${y+(lines.length===2?(i===0?-26:26):0)},"0",0,16,16,2,"${line}"\r\n`).join('');};
   return `SIZE 60 mm, 40 mm\r\nGAP 2 mm, 0 mm\r\nDIRECTION 1\r\nCODEPAGE 1252\r\nCLS\r\n${text(r.name,60)}${text(r.company,180)}PRINT 1\r\n`;
 }
 function replaceCsvRows(csvRows) {

@@ -15,7 +15,7 @@ test('el puente acepta los orígenes autorizados y rechaza otros',async()=>{
     await handle({headers:{host:'127.0.0.1:4173',origin},url:'/api/print',method:'OPTIONS'},res);
     return result;
   }
-  for(const origin of ['https://galtech-etiquetas.netlify.app','https://deploy-preview-2--galtech-etiquetas.netlify.app','https://deploy-preview-4--galtech-etiquetas.netlify.app']){
+  for(const origin of ['https://galtech-etiquetas.netlify.app','https://deploy-preview-2--galtech-etiquetas.netlify.app','https://deploy-preview-4--galtech-etiquetas.netlify.app','https://deploy-preview-5--galtech-etiquetas.netlify.app']){
     const result=await preflight(origin);
     assert.equal(result.status,204);
     assert.equal(result.headers['Access-Control-Allow-Origin'],origin);
