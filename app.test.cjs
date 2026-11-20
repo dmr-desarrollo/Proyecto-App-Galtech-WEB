@@ -32,8 +32,8 @@ test('divide texto largo en dos líneas y conserva la etiqueta completa',()=>{
   assert.ok(Array.from(lines).every(line=>line.length<=20));
   const command=context.commandFor(row);
   for(const line of lines) assert.ok(command.includes('"'+line+'"'));
-  assert.match(command,/TEXT 240,160,"0",0,15,15,2,/);
-  assert.match(command,/TEXT 240,260,"0",0,15,15,2,/);
+  assert.match(command,/TEXT 240,160,"0",0,14,14,2,/);
+  assert.match(command,/TEXT 240,260,"0",0,14,14,2,/);
   assert.equal((command.match(/PRINT 1/g)||[]).length,1);
   const longName='Alejandro Sebastian Gonzalez Fernandez Lopez';
   const nameLines=context.labelLines(longName);
@@ -158,3 +158,30 @@ test('limpia campos y quita solo personas manuales, conservando la selección de
   assert.equal(elements.get('remove-file').disabled,false);
   assert.equal(elements.get('clear-manual-people').disabled,true);
 });
+test('permite etiquetas con solo nombre o solo empresa y rechaza etiquetas vacías',()=>{
+  assert.match(context.commandFor({name:'TOTAL 141',company:''}),/"TOTAL 141"/);
+  assert.match(context.commandFor({name:'',company:'Galtech'}),/"Galtech"/);
+  assert.throws(()=>context.commandFor({name:' ',company:''}),/texto/i);
+});
+test('reduce líneas largas a 14 y mantiene centrado el texto',()=>{
+  const command=context.commandFor({name:'Ana',company:'Universidad ORT Uruguay'});
+  assert.match(command,/"0",0,14,14,2,/);
+  assert.match(command,/"Universidad ORT"/);
+  assert.match(command,/"Uruguay"/);
+});
+test('guarda desde el formulario una etiqueta sin empresa y otra solo con empresa',()=>{
+  const elements=new Map();
+  const element=()=>({disabled:false,hidden:false,value:'',textContent:'',children:[],handlers:{},addEventListener(type,fn){this.handlers[type]=fn},replaceChildren(){this.children=[]},append(...items){this.children.push(...items)},focus(){}});
+  const document={getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id)},createElement(){return element()},addEventListener(){}};
+  const c=vm.createContext({document,confirm:()=>true,location:{protocol:'https:'}});
+  vm.runInContext(fs.readFileSync('app.js','utf8'),c);
+  document.getElementById('manual-name').value='TOTAL'; document.getElementById('manual-lastname').value='141';
+  elements.get('manual-form').handlers.submit({preventDefault(){}});
+  assert.equal(elements.get('preview-name').textContent,'TOTAL 141');
+  assert.equal(elements.get('preview-company').textContent,'');
+  elements.get('manual-company').value='Galtech';
+  elements.get('manual-form').handlers.submit({preventDefault(){}});
+  assert.equal(elements.get('preview-company').textContent,'Galtech');
+  assert.equal(elements.get('count').textContent,'2 seleccionadas');
+});
+

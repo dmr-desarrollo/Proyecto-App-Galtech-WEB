@@ -43,11 +43,11 @@ function labelLines(value) {
   return lines.length?lines:[''];
 }
 function commandFor(r) {
-  if (!r.name.trim() || !r.company.trim() || (r.firstName!==undefined && (!r.firstName.trim() || !r.lastName.trim()))) throw new Error('Completá el nombre, apellido y empresa de las personas seleccionadas antes de imprimir.');
+  if (!r.name.trim() && !r.company.trim()) throw new Error('Ingresá algún texto para imprimir la etiqueta.');
   for (const value of [r.name,r.company]) {
     if (/[^\x20-\x7e\xa0-\xff]/.test(value) || /["\\]/.test(value)) throw new Error('Hay caracteres que la plantilla de prueba no admite. Revisá comillas, símbolos o caracteres especiales.');
   }
-  const text=(value,y,size)=>{const lines=labelLines(value);const positions=lines.length===3?(y===60?[8,56,104]:[160,210,260]):lines.length===2?[y-26,y+26]:[y];return lines.map((line,i)=>`TEXT 240,${positions[i]},"0",0,${size},${size},2,"${line}"\r\n`).join('');};
+  const text=(value,y,size)=>{if(!value.trim()) return ''; const lines=labelLines(value); if(value.length>20 || lines.some(line=>line.length>16)) size=14;const positions=lines.length===3?(y===60?[8,56,104]:[160,210,260]):lines.length===2?[y-26,y+26]:[y];return lines.map((line,i)=>`TEXT 240,${positions[i]},"0",0,${size},${size},2,"${line}"\r\n`).join('');};
   return `SIZE 60 mm, 40 mm\r\nGAP 2 mm, 0 mm\r\nDIRECTION 1\r\nCODEPAGE 1252\r\nCLS\r\n${text(r.name,60,16)}${text(r.company,180,15)}PRINT 1\r\n`;
 }
 function incomplete(row) { return !row.firstName || !row.lastName || !row.company; }
@@ -59,7 +59,7 @@ function editPerson(index) {
   const row=rows[index]; if(!row) return;
   editingIndex=index; $('manual-name').value=row.firstName || ''; $('manual-lastname').value=row.lastName || ''; $('manual-company').value=row.company || '';
   $('manual-details').open=true; $('manual-submit').textContent='Guardar y seleccionar'; $('cancel-edit').hidden=false;
-  $('manual-status').textContent='Completá los datos de esta persona y guardá los cambios.';
+  $('manual-status').textContent='Podés guardar con los datos disponibles y dejar campos vacíos.';
   $( !row.firstName ? 'manual-name' : !row.lastName ? 'manual-lastname' : 'manual-company' ).focus();
 }
 function replaceCsvRows(csvRows) {
@@ -82,6 +82,7 @@ function refresh() {
   const preview=chosen[previewIndex];
   try { $('preview-name').textContent=preview ? labelLines(preview.name).join('\n') : 'Nombre Apellido'; $('preview-company').textContent=preview ? labelLines(preview.company).join('\n') : 'Empresa'; }
   catch { $('preview-name').textContent=preview?.name || 'Nombre Apellido'; $('preview-company').textContent=preview?.company || 'Empresa'; }
+  $('preview-name').className=preview && preview.name.length>16 ? 'small-text' : ''; $('preview-company').className=preview && preview.company.length>16 ? 'small-text' : '';
   $('preview-position').textContent=chosen.length ? `Etiqueta ${previewIndex+1} de ${chosen.length} · 60 × 40 mm` : 'Seleccioná una persona · 60 × 40 mm';
   $('previous').disabled=previewIndex===0; $('next').disabled=previewIndex>=chosen.length-1;
   try { chosen.forEach(commandFor); $('print').disabled=!chosen.length || printing || !printerName; $('print-status').textContent=''; }
@@ -92,13 +93,13 @@ $('remove-file').addEventListener('click',()=>{if(!confirm('¿Quitar las persona
 $('manual-form').addEventListener('submit',e=>{
   e.preventDefault();
   const fields=['manual-name','manual-lastname','manual-company'].map(id=>$(id).value.trim().replace(/\s+/g,' '));
-  if(fields.some(value=>!value)) { $('manual-status').textContent='Completá nombre, apellido y empresa.'; return; }
-  const row={firstName:fields[0],lastName:fields[1],name:fields[0]+' '+fields[1],company:fields[2],source:editingIndex===null?'manual':rows[editingIndex].source};
+  if(!fields.some(Boolean)) { $('manual-status').textContent='Ingresá algún texto para imprimir la etiqueta.'; return; }
+  const row={firstName:fields[0],lastName:fields[1],name:[fields[0],fields[1]].filter(Boolean).join(' '),company:fields[2],source:editingIndex===null?'manual':rows[editingIndex].source};
   try { commandFor(row); } catch(err) { $('manual-status').textContent=err.message; return; }
   const index=editingIndex===null?rows.length:editingIndex; rows[index]=row; selected.add(index); resetEditor();
   for(const id of ['search','company-search']) $(id).value='';
   $('search').disabled=false; $('company-search').disabled=false; $('all').disabled=false;
-  previewIndex=[...selected].sort((a,b)=>a-b).indexOf(index); $('manual-status').textContent=`${row.name} quedó seleccionada para imprimir.`;
+  previewIndex=[...selected].sort((a,b)=>a-b).indexOf(index); $('manual-status').textContent=`${row.name || row.company} quedó seleccionada para imprimir.`;
   refresh(); $('manual-name').focus();
 });
 $('cancel-edit').addEventListener('click',()=>{resetEditor(); $('manual-status').textContent='Edición cancelada.';});

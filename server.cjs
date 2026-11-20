@@ -41,7 +41,7 @@ const server=http.createServer(async(req,res)=>{
     let body=''; for await(const chunk of req){body+=chunk;if(body.length>1000000) throw Error('La lista es demasiado grande.');}
     const payload=JSON.parse(body); if(!Array.isArray(payload.rows)||!payload.rows.length||payload.rows.length>2000) throw Error('Seleccioná entre 1 y 2000 personas.');
     const printers=await listPrinters(); if(typeof payload.printer!=='string'||!printers.some(p=>p.name===payload.printer)) throw Error('La impresora seleccionada no está disponible. Volvé a buscarla.');
-    const commands=payload.rows.map(r=>{if(!r||typeof r.name!=='string'||typeof r.company!=='string'||!r.name.trim()||!r.company.trim()) throw Error('Datos incompletos.');return context.commandFor(r);}).join('');
+    const commands=payload.rows.map(r=>{if(!r||typeof r.name!=='string'||typeof r.company!=='string'||(!r.name.trim()&&!r.company.trim())) throw Error('Datos incompletos.');return context.commandFor(r);}).join('');
     const encoded=Buffer.from(commands,'latin1').toString('base64');
     await new Promise((resolve,reject)=>{
       const child=spawn('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(root,'print-raw.ps1'),'-PrinterName',payload.printer],{windowsHide:true}); let error='';
