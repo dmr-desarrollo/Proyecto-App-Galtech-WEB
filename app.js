@@ -31,12 +31,20 @@ function loadCSV(text) {
   data.slice(1).forEach((r,i) => { const values = indexes.map(j => (r[j] || '').trim().replace(/\s+/g,' ')); if (values.some(v => !v)) invalid.push(i+2); else valid.push({name: values[0]+' '+values[1], company: values[2]}); });
   return {valid, invalid};
 }
+function labelLines(value) {
+  if (value.length<=26) return [value];
+  let split=value.lastIndexOf(' ',26);
+  if(split<1 || value.length-split-1>26) split=26;
+  const first=value.slice(0,split).trimEnd(), second=value.slice(split).trimStart();
+  if(!second || second.length>26) throw new Error('El texto no entra en dos líneas de la etiqueta. Acortalo antes de imprimir.');
+  return [first,second];
+}
 function commandFor(r) {
   for (const value of [r.name,r.company]) {
-    if (value.length > 35) throw new Error('Hay un texto de más de 35 caracteres; acortalo antes de generar la prueba.');
     if (/[^\x20-\x7e\xa0-\xff]/.test(value) || /["\\]/.test(value)) throw new Error('Hay caracteres que la plantilla de prueba no admite. Revisá comillas, símbolos o caracteres especiales.');
   }
-  return `SIZE 60 mm, 40 mm\r\nGAP 2 mm, 0 mm\r\nDIRECTION 1\r\nCODEPAGE 1252\r\nCLS\r\nTEXT 240,60,"0",0,16,16,2,"${r.name}"\r\nTEXT 240,180,"0",0,16,16,2,"${r.company}"\r\nPRINT 1\r\n`;
+  const text=(value,y)=>{const lines=labelLines(value);return lines.map((line,i)=>`TEXT 240,${y+(lines.length===2?(i===0?-16:16):0)},"0",0,16,16,2,"${line}"\r\n`).join('');};
+  return `SIZE 60 mm, 40 mm\r\nGAP 2 mm, 0 mm\r\nDIRECTION 1\r\nCODEPAGE 1252\r\nCLS\r\n${text(r.name,60)}${text(r.company,180)}PRINT 1\r\n`;
 }
 function replaceCsvRows(csvRows) {
   const chosen = new Set([...selected].map(i => rows[i]));
@@ -54,7 +62,9 @@ function refresh() {
   $('clear-manual-people').disabled=!rows.some(row=>row.source==='manual');
   const chosen=[...selected].sort((a,b)=>a-b).map(i=>rows[i]);
   previewIndex=Math.min(previewIndex,Math.max(0,chosen.length-1));
-  $('preview-name').textContent=chosen[previewIndex]?.name || 'Nombre Apellido'; $('preview-company').textContent=chosen[previewIndex]?.company || 'Empresa';
+  const preview=chosen[previewIndex];
+  try { $('preview-name').textContent=preview ? labelLines(preview.name).join('\n') : 'Nombre Apellido'; $('preview-company').textContent=preview ? labelLines(preview.company).join('\n') : 'Empresa'; }
+  catch { $('preview-name').textContent=preview?.name || 'Nombre Apellido'; $('preview-company').textContent=preview?.company || 'Empresa'; }
   $('preview-position').textContent=chosen.length ? `Etiqueta ${previewIndex+1} de ${chosen.length} · 60 × 40 mm` : 'Seleccioná una persona · 60 × 40 mm';
   $('previous').disabled=previewIndex===0; $('next').disabled=previewIndex>=chosen.length-1;
   try { chosen.forEach(commandFor); $('print').disabled=!chosen.length || printing || !printerName; $('print-status').textContent=''; }

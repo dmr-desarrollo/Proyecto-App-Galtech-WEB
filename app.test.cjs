@@ -21,6 +21,18 @@ test('genera TSPL e impide insertar comandos',()=>{
   assert.match(context.commandFor({name:'María Pérez',company:'Galtech'}),/TEXT 240,180,"0",0,16,16,2,"Galtech"/);
   assert.throws(()=>context.commandFor({name:'Ana"\r\nPRINT 99',company:'Galtech'}));
 });
+test('divide texto largo en dos líneas y conserva la etiqueta completa',()=>{
+  const row={name:'Ana Pérez',company:'Cámara Española de Comercio y Navegación'};
+  const lines=context.labelLines(row.company);
+  assert.equal(lines.length,2);
+  assert.equal(Array.from(lines).join(' '),row.company);
+  assert.ok(Array.from(lines).every(line=>line.length<=26));
+  const command=context.commandFor(row);
+  for(const line of lines) assert.ok(command.includes('"'+line+'"'));
+  assert.equal((command.match(/PRINT 1/g)||[]).length,1);
+  assert.throws(()=>context.commandFor({name:'Ana Pérez',company:'A'.repeat(53)}),/no entra/i);
+  assert.throws(()=>context.commandFor({name:'Ana Pérez',company:'Empresa"\r\nPRINT 50'}));
+});
 test('combina los filtros de persona y empresa sin distinguir acentos',()=>{
   const person={name:'María Pérez',company:'Tecnología Sur'};
   assert.equal(context.matchesFilters(person,'maria','tecnologia'),true);
